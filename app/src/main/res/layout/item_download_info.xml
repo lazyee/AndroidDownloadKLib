@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:orientation="vertical"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent">
+
+    <TextView
+        android:id="@+id/tvDownloadInfo"
+        android:layout_width="match_parent"
+        tools:text="这个是文件下载的进度信息"
+        android:textColor="@color/black"
+        android:textSize="12sp"
+        android:layout_height="wrap_content"/>
+</LinearLayout>
