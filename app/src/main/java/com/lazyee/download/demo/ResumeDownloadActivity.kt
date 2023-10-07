@@ -7,6 +7,7 @@ import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.lazyee.download.klib.DownloadCallback
 import com.lazyee.download.klib.DownloadManager
@@ -127,7 +128,7 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
         runOnUiThread {
             downloadInfoList.add(CallbackInfo(info = "开始下载:$downloadUrl") )
             downloadInfoAdapter.notifyDataSetChanged()
-            rvDownloadInfo.scrollBy(0,50)
+            scrollToBottom()
         }
     }
 
@@ -143,7 +144,7 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
             }
 
             downloadInfoAdapter.notifyDataSetChanged()
-            rvDownloadInfo.scrollBy(0,50)
+            scrollToBottom()
         }
     }
 
@@ -151,7 +152,7 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
         runOnUiThread {
             downloadInfoList.add(CallbackInfo(info ="已下载:$downloadUrl;保存到:$savePath"))
             downloadInfoAdapter.notifyDataSetChanged()
-            rvDownloadInfo.scrollBy(0,50)
+            scrollToBottom()
         }
     }
 
@@ -159,8 +160,13 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
         runOnUiThread {
             downloadInfoList.add(CallbackInfo(info = errorMsg))
             downloadInfoAdapter.notifyDataSetChanged()
-            rvDownloadInfo.scrollBy(0,50)
+            scrollToBottom()
         }
+    }
+
+    private fun scrollToBottom(){
+        val position = if(downloadInfoAdapter.itemCount - 1 > 0) downloadInfoAdapter.itemCount - 1 else 0
+        (rvDownloadInfo.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(position,0)
     }
 
     private inner class DownloadInfoAdapter : RecyclerView.Adapter<DownloadInfoViewHolder>(){

@@ -45,12 +45,7 @@ class DownloadManager private constructor(mContext: Context){
         return this
     }
 
-//    fun initInstance(context:Context){
-//        val key = "1695373632879"
-//        val url = System.currentTimeMillis().toString()
-//        DownloadDBHelper(context).updateDownloadTask(InternalDownloadTask(url, md5(key),"44444"))
-//
-//    }
+
     fun download(downloadUrl:String, savePath:String){
         mDownloadTaskList.add(InternalDownloadTask(downloadUrl, getKeyByUrl(downloadUrl), savePath))
         realDownload()
@@ -92,8 +87,6 @@ class DownloadManager private constructor(mContext: Context){
             downloadFileProperty?:return
             task.contentLength = downloadFileProperty.contentLength
             task.isSupportSplitDownload = downloadFileProperty.isSupportSplitDownload
-
-
 
             val downloadTaskRecord = mDownloadDBHelper.getDownloadTaskByKey(task.getKey()).firstOrNull()
             var alreadyDownloadSize = downloadTaskRecord?.downloadSize?: 0L
@@ -241,9 +234,9 @@ class DownloadManager private constructor(mContext: Context){
     private var lastCallbackDownloadProgressTime = 0L
     private fun callbackDownloading(task: InternalDownloadTask){
         mDownloadDBHelper.updateDownloadTask(task)
-        //回调时间最少1s
+        //回调时间最少500ms
         val currentTimeMillis = System.currentTimeMillis()
-        if(currentTimeMillis - lastCallbackDownloadProgressTime > 1_000){
+        if(currentTimeMillis - lastCallbackDownloadProgressTime > 500){
             mDownloadCallbackHashMap.values.forEach { it.onDownloading(task.getDownloadUrl(),task.downloadSize,task.contentLength) }
             lastCallbackDownloadProgressTime = System.currentTimeMillis()
         }
@@ -259,9 +252,11 @@ class DownloadManager private constructor(mContext: Context){
         mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(errorMsg) }
     }
 
-    fun exit(){
+    /**
+     * 取消下载
+     */
+    fun cancel(){
         mCurrentHeadHttpURLConnection?.disconnect()
         mCurrentHeadHttpURLConnection?.disconnect()
-
     }
 }
