@@ -1,10 +1,10 @@
 plugins {
     id 'com.android.library'
-    id 'org.jetbrains.kotlin.android'
+    id 'kotlin-android'
 }
 apply from: "../config.gradle"
 android {
-    namespace 'com.lazyee.download.klib'
+
     compileSdk versions.compile_sdk
 
     defaultConfig {
