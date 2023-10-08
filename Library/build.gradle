@@ -1,7 +1,6 @@
 plugins {
     id 'com.android.library'
     id 'kotlin-android'
-    id 'maven-publish'
 }
 apply from: "../config.gradle"
 android {
@@ -18,36 +17,27 @@ android {
 
     buildTypes {
         release {
-            minifyEnabled false
+            minifyEnabled options.minify_enabled
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
     compileOptions {
-        sourceCompatibility JavaVersion.VERSION_1_8
-        targetCompatibility JavaVersion.VERSION_1_8
+        sourceCompatibility versions.java
+        targetCompatibility versions.java
     }
     kotlinOptions {
-        jvmTarget = '1.8'
+        jvmTarget = versions.jvm_target
     }
-}
-
-afterEvaluate {
-    publishing {
-        publications {
-            release(MavenPublication) {
-                from components.release
-            }
-        }
+    buildFeatures{
+        viewBinding true
     }
 }
 
 dependencies {
-
     implementation "androidx.core:core-ktx:${versions.core_ktx}"
     api "androidx.appcompat:appcompat:${versions.appcompat}"
     api "com.google.android.material:material:${versions.material}"
     testImplementation "junit:junit:${versions.junit}"
     androidTestImplementation "androidx.test.ext:junit:${versions.android_junit}"
     androidTestImplementation "androidx.test.espresso:espresso-core:${versions.espresso_core}"
-    implementation "org.jetbrains.kotlin:kotlin-stdlib:${versions.kotlin}"
 }
