@@ -32,6 +32,16 @@ android {
     buildFeatures{
         viewBinding true
     }
+
+    afterEvaluate {
+        publishing {
+            publications {
+                release(MavenPublication) {
+                    from components.release
+                }
+            }
+        }
+    }
 }
 
 dependencies {
@@ -41,16 +51,5 @@ dependencies {
     testImplementation "junit:junit:${versions.junit}"
     androidTestImplementation "androidx.test.ext:junit:${versions.android_junit}"
     androidTestImplementation "androidx.test.espresso:espresso-core:${versions.espresso_core}"
-}
-
-afterEvaluate {
-    publishing {
-        publications {
-            release(MavenPublication) {
-                from components.release
-                groupId = 'com.github.lazyee'
-                artifactId = 'AndroidDownloadKLib'
-            }
-        }
-    }
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:${versions.kotlin}"
 }
