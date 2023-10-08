@@ -1,19 +1,19 @@
 plugins {
-    id 'com.android.application'
+    id 'com.android.library'
     id 'kotlin-android'
+    id 'maven-publish'
 }
-
+apply from: "../config.gradle"
 android {
+
     compileSdk versions.compile_sdk
+
     defaultConfig {
         minSdkVersion versions.min_sdk
         targetSdkVersion versions.target_sdk
-        applicationId 'com.lazyee.download.demo'
-        versionCode 1
-        versionName "1.0"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
-        multiDexEnabled true
+        consumerProguardFiles "consumer-rules.pro"
     }
 
     buildTypes {
@@ -32,19 +32,24 @@ android {
     buildFeatures{
         viewBinding true
     }
+
+    afterEvaluate {
+        publishing {
+            publications {
+                release(MavenPublication) {
+                    from components.release
+                }
+            }
+        }
+    }
 }
 
 dependencies {
+    implementation "androidx.core:core-ktx:${versions.core_ktx}"
+    api "androidx.appcompat:appcompat:${versions.appcompat}"
+    api "com.google.android.material:material:${versions.material}"
     testImplementation "junit:junit:${versions.junit}"
     androidTestImplementation "androidx.test.ext:junit:${versions.android_junit}"
     androidTestImplementation "androidx.test.espresso:espresso-core:${versions.espresso_core}"
-
-    api "androidx.appcompat:appcompat:${versions.appcompat}"
-    api "com.google.android.material:material:${versions.material}"
-    implementation "androidx.multidex:multidex:${versions.multidex}"
-
     implementation "org.jetbrains.kotlin:kotlin-stdlib:${versions.kotlin}"
-    implementation "androidx.core:core-ktx:${versions.core_ktx}"
-    implementation "org.jetbrains.kotlinx:kotlinx-coroutines-android:${versions.kotlinx_coroutines_android}"
-    implementation project(":library")
 }
