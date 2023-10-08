@@ -79,7 +79,7 @@ class InternalDownloadTask(private val downloadUrl:String,
             this.contentLength = downloadFileProperty.contentLength
             this.isSupportSplitDownload = downloadFileProperty.isSupportSplitDownload
 
-            val downloadTaskRecord = mDownloadTaskCallback?.onGetDownloadTaskHistory(this)
+            val downloadTaskRecord = mDownloadTaskCallback?.provideDownloadTaskHistory(this)
             var alreadyDownloadSize = downloadTaskRecord?.downloadSize?: 0L
 
             if(downloadTaskRecord != null && !checkConsistencyFromDB(downloadFileProperty,downloadTaskRecord)){
