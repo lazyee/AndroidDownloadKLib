@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.library'
     id 'kotlin-android'
+    id 'maven-publish'
 }
 apply from: "../config.gradle"
 android {
@@ -30,6 +31,15 @@ android {
     }
     buildFeatures{
         viewBinding true
+    }
+}
+
+publishing {
+    publications {
+        mavenJava(MavenPublication) {
+            groupId = 'com.github.lazyee'
+            artifactId = 'AndroidDownloadKLib'
+        }
     }
 }
 
