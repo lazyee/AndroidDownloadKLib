@@ -34,15 +34,6 @@ android {
     }
 }
 
-publishing {
-    publications {
-        mavenJava(MavenPublication) {
-            groupId = 'com.github.lazyee'
-            artifactId = 'AndroidDownloadKLib'
-        }
-    }
-}
-
 dependencies {
     implementation "androidx.core:core-ktx:${versions.core_ktx}"
     api "androidx.appcompat:appcompat:${versions.appcompat}"
@@ -50,4 +41,16 @@ dependencies {
     testImplementation "junit:junit:${versions.junit}"
     androidTestImplementation "androidx.test.ext:junit:${versions.android_junit}"
     androidTestImplementation "androidx.test.espresso:espresso-core:${versions.espresso_core}"
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+                groupId = 'com.github.lazyee'
+                artifactId = 'AndroidDownloadKLib'
+            }
+        }
+    }
 }
