@@ -5,6 +5,7 @@ import java.io.File
 import java.io.RandomAccessFile
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
 
 /**
  * Author: leeorz
@@ -149,7 +150,7 @@ class InternalDownloadTask(private val downloadUrl:String,
                 val contentLength:Long = httpUrlConnection.contentLength.toLong()
                 LogUtils.e(TAG,"文件大小:[${contentLength}]")
                 val acceptRanges = httpUrlConnection.getHeaderField("Accept-Ranges")
-                val isSupportSplitDownload = acceptRanges != null && acceptRanges.lowercase() == "bytes"
+                val isSupportSplitDownload = acceptRanges != null && acceptRanges.toLowerCase(Locale.ROOT) == "bytes"
                 LogUtils.e(TAG,"链接:${task.getDownloadUrl()}" +  if(isSupportSplitDownload)",支持分片下载" else "不支持分片下载")
                 downloadFIleProperty = DownloadFileProperty(contentLength,isSupportSplitDownload)
             }
