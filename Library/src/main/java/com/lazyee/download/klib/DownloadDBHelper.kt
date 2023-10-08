@@ -24,6 +24,7 @@ private const val COLUMN_DOWNLOAD_SIZE = "download_size"
 private const val COLUMN_TOTAL_SIZE = "total_size"
 private const val COLUMN_SUPPORT_SPLIT_DOWNLOAD = "support_split_download"
 class DownloadDBHelper(context: Context) :SQLiteOpenHelper(context,DB_NAME,null,VERSION){
+
     override fun onCreate(db: SQLiteDatabase?) {
         val downloadTableSql = """
             CREATE TABLE IF NOT EXISTS $T_DOWNLOAD (
@@ -36,7 +37,7 @@ class DownloadDBHelper(context: Context) :SQLiteOpenHelper(context,DB_NAME,null,
             '$COLUMN_SUPPORT_SPLIT_DOWNLOAD' INTEGER
             );
         """.trimIndent()
-        Log.e(TAG,"downloadSql:$downloadTableSql")
+        Log.e(TAG,"download table Sql:$downloadTableSql")
         db?.execSQL(downloadTableSql)
     }
 
