@@ -132,8 +132,8 @@ class DownloadTask(val downloadUrl:String,
             val httpUrlConnection = URL(task.downloadUrl).openConnection() as HttpURLConnection
             mCurrentHeadHttpURLConnection = httpUrlConnection
             httpUrlConnection.requestMethod = "HEAD"
-            httpUrlConnection.connectTimeout = 500
-            httpUrlConnection.readTimeout = 500
+            httpUrlConnection.connectTimeout = 3_000
+            httpUrlConnection.readTimeout = 3_000
             val responseCode = httpUrlConnection.responseCode
             LogUtils.e(TAG,"[HEAD]请求获取文件信息成功,链接:${task.downloadUrl}")
 
