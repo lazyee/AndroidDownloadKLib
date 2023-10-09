@@ -30,6 +30,15 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
             downloadManager.debug(false)
             return downloadManager
         }
+
+        private fun md5(content:String): String {
+            val bytes = MessageDigest.getInstance("MD5").digest(content.toByteArray())
+            return bytes.joinToString("") { "%02X".format(it) }
+        }
+
+        fun getKeyByUrl(url:String): String {
+            return md5(url)
+        }
     }
 
 
@@ -101,15 +110,6 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
             mDownloadTaskList.remove(task)
             mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(errorMsg) }
         }
-    }
-
-    private fun md5(content:String): String {
-        val bytes = MessageDigest.getInstance("MD5").digest(content.toByteArray())
-        return bytes.joinToString("") { "%02X".format(it) }
-    }
-
-    fun getKeyByUrl(url:String): String {
-        return md5(url)
     }
 
     fun addDownloadCallback(key:Any,callback: DownloadCallback){

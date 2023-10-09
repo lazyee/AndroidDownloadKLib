@@ -23,6 +23,7 @@ class DownloadTask(val downloadUrl:String,
     var isSupportSplitDownload = false
     var contentLength = 0L
     val downloadFilePath:String
+    val tempDownloadFilePath:String
     private val bufferSize = 32 * 1024//一次性读取32k数据
 
     private var mCurrentDownloadHttpURLConnection: HttpURLConnection? = null
@@ -30,11 +31,12 @@ class DownloadTask(val downloadUrl:String,
     private var mDownloadTaskCallback:DownloadTaskCallback? = null
 
     init {
-        if(savePath.endsWith(File.separator)){
-            downloadFilePath = savePath + key
-        }else{
-            downloadFilePath = savePath + File.separator + key
+        var realSavePath:String = savePath
+        if(!savePath.endsWith(File.separator)){
+            realSavePath = savePath +  File.separator
         }
+        downloadFilePath = realSavePath + key
+        tempDownloadFilePath = realSavePath + "_" + key
     }
 
     internal fun setDownloadTaskCallback(callback: DownloadTaskCallback){
@@ -79,7 +81,7 @@ class DownloadTask(val downloadUrl:String,
                 alreadyDownloadSize = 0L
             }
 
-            if(checkConsistencyFromLocalFile(downloadFileProperty,this) && alreadyDownloadSize == 0L){
+            if(checkConsistencyFromLocalFile(downloadFileProperty) && alreadyDownloadSize == 0L){
                 LogUtils.e(TAG,"在本地文件检测到文件已经完整下载，跳过本次下载任务")
                 mDownloadTaskCallback?.onDownloadComplete(this)
                 return
@@ -91,12 +93,12 @@ class DownloadTask(val downloadUrl:String,
             httpUrlConnection.requestMethod = "GET"
 
             if (isSupportSplitDownload && alreadyDownloadSize > 0){
-                createDownloadFile(downloadFilePath,false)
+                createDownloadFile(tempDownloadFilePath,false)
                 httpUrlConnection.setRequestProperty("Range", "bytes=$alreadyDownloadSize-")
                 LogUtils.e(TAG,"开始分片下载，从位置:${alreadyDownloadSize}位置开始")
             }else{
                 LogUtils.e(TAG,"开始全量下载")
-                createDownloadFile(downloadFilePath,true)
+                createDownloadFile(tempDownloadFilePath,true)
             }
 
             if (httpUrlConnection.responseCode == HttpURLConnection.HTTP_PARTIAL
@@ -104,7 +106,7 @@ class DownloadTask(val downloadUrl:String,
 
                 val buffer = ByteArray(bufferSize)
                 var readCount = 0
-                val randomAccessFile = RandomAccessFile(downloadFilePath, "rwd")
+                val randomAccessFile = RandomAccessFile(tempDownloadFilePath, "rwd")
                 randomAccessFile.seek(alreadyDownloadSize)
                 while (httpUrlConnection.inputStream.read(buffer, 0, buffer.count()).also { readCount = it } != -1) {
                     randomAccessFile.write(buffer, 0, readCount)
@@ -114,6 +116,8 @@ class DownloadTask(val downloadUrl:String,
                 }
 
                 LogUtils.e(TAG,"文件下载完成")
+                //将临时文件改名为正式文件
+                File(tempDownloadFilePath).renameTo(File(downloadFilePath))
                 mDownloadTaskCallback?.onDownloadComplete(this)
                 httpUrlConnection.inputStream.close()
             } else {
@@ -160,12 +164,10 @@ class DownloadTask(val downloadUrl:String,
         return property.contentLength == downloadTaskRecord.contentLength
     }
 
-    private fun checkConsistencyFromLocalFile(property: DownloadFileProperty,task: DownloadTask): Boolean {
-        val file = File(task.downloadFilePath)
+    private fun checkConsistencyFromLocalFile(property: DownloadFileProperty): Boolean {
+        val file = File(downloadFilePath)
         val fileLength = if(file.exists()) file.length() else 0L
         return property.contentLength == fileLength
-
-
     }
 
 
