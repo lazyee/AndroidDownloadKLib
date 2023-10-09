@@ -18,6 +18,8 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
 //    private var mExecutorService: ExecutorService = Executors.newSingleThreadExecutor()
     private var mExecutorService: ExecutorService
     private var mDownloadDBHelper:DownloadDBHelper
+    private val mSuccessDownloadTaskList = mutableListOf<DownloadTask>()
+    private val mFailDownloadTaskList = mutableListOf<DownloadTask>()
 
     init {
         mDownloadDBHelper = DownloadDBHelper(mContext)
@@ -102,14 +104,39 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
 
         override fun onDownloadComplete(task: DownloadTask) {
             mDownloadTaskList.remove(task)
+            mSuccessDownloadTaskList.add(task)
             mDownloadDBHelper.deleteByKey(task.key)
             mDownloadCallbackHashMap.values.forEach { it.onDownloadComplete(task.downloadUrl,task.downloadFilePath) }
+            if(mDownloadTaskList.isEmpty()){
+                callbackAllDownloadEnd()
+            }
         }
 
         override fun onDownloadFail(task: DownloadTask, errorMsg: String) {
             mDownloadTaskList.remove(task)
+            mFailDownloadTaskList.add(task)
             mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(errorMsg) }
+
+            if(mDownloadTaskList.isEmpty()){
+                callbackAllDownloadEnd()
+            }
         }
+    }
+
+    private fun callbackAllDownloadEnd(){
+        val successDownloadUrlList = mutableListOf<String>()
+        val failDownloadUrlList = mutableListOf<String>()
+        mSuccessDownloadTaskList.forEach{
+            successDownloadUrlList.add(it.downloadUrl)
+        }
+
+        mFailDownloadTaskList.forEach{
+            failDownloadUrlList.add(it.downloadUrl)
+        }
+
+        mDownloadCallbackHashMap.values.forEach { it.onAllDownloadEnd(successDownloadUrlList,failDownloadUrlList) }
+        mSuccessDownloadTaskList.clear()
+        mFailDownloadTaskList.clear()
     }
 
     fun addDownloadCallback(key:Any,callback: DownloadCallback){
