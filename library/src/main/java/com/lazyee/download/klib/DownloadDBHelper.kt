@@ -45,11 +45,11 @@ class DownloadDBHelper(context: Context) :SQLiteOpenHelper(context,DB_NAME,null,
 
     }
 
-    fun getDownloadTaskByKey(key:String) : MutableList<InternalDownloadTask> {
-        val taskList = mutableListOf<InternalDownloadTask>()
+    fun getDownloadTaskByKey(key:String) : MutableList<DownloadTask> {
+        val taskList = mutableListOf<DownloadTask>()
         val cursor = readableDatabase.query(T_DOWNLOAD,null,"$COLUMN_FILE_KEY=?", arrayOf(key),null,null,null)
         while (cursor.moveToNext()){
-            taskList.add( InternalDownloadTask(cursor.getString(cursor.getColumnIndex(COLUMN_DOWNLOAD_URL)),
+            taskList.add( DownloadTask(cursor.getString(cursor.getColumnIndex(COLUMN_DOWNLOAD_URL)),
                 cursor.getString(cursor.getColumnIndex(COLUMN_FILE_KEY)),
                 cursor.getString(cursor.getColumnIndex(COLUMN_SAVE_FILE_PATH)),).also {
                     it.contentLength = cursor.getLong(cursor.getColumnIndex(COLUMN_TOTAL_SIZE))
@@ -73,17 +73,17 @@ class DownloadDBHelper(context: Context) :SQLiteOpenHelper(context,DB_NAME,null,
         writableDatabase.delete(T_DOWNLOAD,"$COLUMN_FILE_KEY=?", arrayOf(key))
     }
 
-    fun updateDownloadTask(task:InternalDownloadTask){
+    fun updateDownloadTask(task:DownloadTask){
         writableDatabase.beginTransaction()
         val values = ContentValues()
-        values.put(COLUMN_FILE_KEY,task.getKey())
-        values.put(COLUMN_DOWNLOAD_URL,task.getDownloadUrl())
-        values.put(COLUMN_SAVE_FILE_PATH,task.getDownloadFilePath())
+        values.put(COLUMN_FILE_KEY,task.key)
+        values.put(COLUMN_DOWNLOAD_URL,task.downloadUrl)
+        values.put(COLUMN_SAVE_FILE_PATH,task.downloadFilePath)
         values.put(COLUMN_DOWNLOAD_SIZE,task.downloadSize)
         values.put(COLUMN_TOTAL_SIZE,task.contentLength)
         values.put(COLUMN_SUPPORT_SPLIT_DOWNLOAD,if(task.isSupportSplitDownload) 1 else 0)
-        if(exist(task.getKey())){
-            writableDatabase.update(T_DOWNLOAD,values,"$COLUMN_FILE_KEY=?", arrayOf(task.getKey()))
+        if(exist(task.key)){
+            writableDatabase.update(T_DOWNLOAD,values,"$COLUMN_FILE_KEY=?", arrayOf(task.key))
         }else{
             writableDatabase.insert(T_DOWNLOAD,null,values)
         }

@@ -1,13 +1,6 @@
 package com.lazyee.download.klib
 
 import android.content.Context
-import android.text.TextUtils
-import android.util.Log
-import androidx.core.os.BuildCompat
-import java.io.File
-import java.io.RandomAccessFile
-import java.net.HttpURLConnection
-import java.net.URL
 import java.security.MessageDigest
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -20,7 +13,7 @@ import java.util.concurrent.Executors
  */
 private const val TAG = "[DownloadManager]"
 class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreSize:Int){
-    private val mDownloadTaskList = mutableListOf<InternalDownloadTask>()
+    private val mDownloadTaskList = mutableListOf<DownloadTask>()
     private var mDownloadCallbackHashMap = hashMapOf<Any,DownloadCallback>()
 //    private var mExecutorService: ExecutorService = Executors.newSingleThreadExecutor()
     private var mExecutorService: ExecutorService
@@ -47,7 +40,7 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
 
 
     fun download(downloadUrl:String, savePath:String){
-        mDownloadTaskList.add(InternalDownloadTask(downloadUrl, getKeyByUrl(downloadUrl), savePath))
+        mDownloadTaskList.add(DownloadTask(downloadUrl, getKeyByUrl(downloadUrl), savePath))
         realDownload()
     }
 
@@ -59,8 +52,8 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
             }
         }
         realDownloadUrlList.forEach { downloadUrl->
-            if(mDownloadTaskList.find { it.getDownloadUrl() == downloadUrl } == null){
-                val task = InternalDownloadTask(downloadUrl,getKeyByUrl(downloadUrl),savePath)
+            if(mDownloadTaskList.find { it.downloadUrl == downloadUrl } == null){
+                val task = DownloadTask(downloadUrl,getKeyByUrl(downloadUrl),savePath)
                 task.setDownloadTaskCallback(mDownloadTaskCallback)
                 mDownloadTaskList.add(task)
             }
@@ -78,33 +71,33 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
 
     private val mDownloadTaskCallback = object :DownloadTaskCallback{
 
-        override fun provideDownloadTaskHistory(task: InternalDownloadTask):InternalDownloadTask? {
-            return mDownloadDBHelper.getDownloadTaskByKey(task.getKey()).firstOrNull()
+        override fun provideDownloadTaskHistory(task: DownloadTask):DownloadTask? {
+            return mDownloadDBHelper.getDownloadTaskByKey(task.key).firstOrNull()
         }
 
-        override fun onDownloadStart(task: InternalDownloadTask) {
+        override fun onDownloadStart(task: DownloadTask) {
             mDownloadDBHelper.updateDownloadTask(task)
-            mDownloadCallbackHashMap.values.forEach { it.onDownloadStart(task.getDownloadUrl()) }
+            mDownloadCallbackHashMap.values.forEach { it.onDownloadStart(task.downloadUrl) }
         }
 
         private var lastCallbackDownloadProgressTime = 0L
-        override fun onDownloading(task: InternalDownloadTask) {
+        override fun onDownloading(task: DownloadTask) {
             mDownloadDBHelper.updateDownloadTask(task)
             //回调时间最少500ms
             val currentTimeMillis = System.currentTimeMillis()
             if(currentTimeMillis - lastCallbackDownloadProgressTime > 500){
-                mDownloadCallbackHashMap.values.forEach { it.onDownloading(task.getDownloadUrl(),task.downloadSize,task.contentLength) }
+                mDownloadCallbackHashMap.values.forEach { it.onDownloading(task.downloadUrl,task.downloadSize,task.contentLength) }
                 lastCallbackDownloadProgressTime = System.currentTimeMillis()
             }
         }
 
-        override fun onDownloadComplete(task: InternalDownloadTask) {
+        override fun onDownloadComplete(task: DownloadTask) {
             mDownloadTaskList.remove(task)
-            mDownloadDBHelper.deleteByKey(task.getKey())
-            mDownloadCallbackHashMap.values.forEach { it.onDownloadComplete(task.getDownloadUrl(),task.getDownloadFilePath()) }
+            mDownloadDBHelper.deleteByKey(task.key)
+            mDownloadCallbackHashMap.values.forEach { it.onDownloadComplete(task.downloadUrl,task.downloadFilePath) }
         }
 
-        override fun onDownloadFail(task: InternalDownloadTask, errorMsg: String) {
+        override fun onDownloadFail(task: DownloadTask, errorMsg: String) {
             mDownloadTaskList.remove(task)
             mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(errorMsg) }
         }

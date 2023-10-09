@@ -6,10 +6,10 @@ package com.lazyee.download.klib
  * Description:
  * Date: 2023/9/21 15:07
  */
-interface DownloadTaskCallback{
-    fun provideDownloadTaskHistory(task: InternalDownloadTask):InternalDownloadTask?
-    fun onDownloadStart(task: InternalDownloadTask)
-    fun onDownloading(task: InternalDownloadTask)
-    fun onDownloadComplete(task: InternalDownloadTask)
-    fun onDownloadFail(task: InternalDownloadTask,errorMsg:String)
+internal interface DownloadTaskCallback{
+    fun provideDownloadTaskHistory(task: DownloadTask):DownloadTask?
+    fun onDownloadStart(task: DownloadTask)
+    fun onDownloading(task: DownloadTask)
+    fun onDownloadComplete(task: DownloadTask)
+    fun onDownloadFail(task: DownloadTask,errorMsg:String)
 }
