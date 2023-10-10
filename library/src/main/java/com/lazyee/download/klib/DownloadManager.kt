@@ -108,7 +108,11 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
             //回调时间最少500ms
             val currentTimeMillis = System.currentTimeMillis()
             if(currentTimeMillis - mLastCallbackDownloadProgressTime > 500){
-                mDownloadCallbackHashMap.values.forEach { it.onDownloading(mDownloadProgressInfoList.toList()) }
+                val callbackDownloadProgressInfoList = mutableListOf<DownloadProgressInfo>()
+                mDownloadProgressInfoList.forEach { callbackDownloadProgressInfoList.add(it) }
+                if(callbackDownloadProgressInfoList.isNotEmpty()){
+                    mDownloadCallbackHashMap.values.forEach { it.onDownloading(callbackDownloadProgressInfoList) }
+                }
                 mDownloadProgressInfoList.clear()
                 mLastCallbackDownloadProgressTime = currentTimeMillis
             }
