@@ -66,14 +66,15 @@ class DownloadTask(val downloadUrl:String,
     fun execute(){
         try{
             isReadyDownload = true
-            mDownloadTaskCallback?.onDownloadStart(this)
+
             val httpUrlConnection = URL(downloadUrl).openConnection() as HttpURLConnection
             mCurrentDownloadHttpURLConnection = httpUrlConnection
             httpUrlConnection.requestMethod = "GET"
 
             contentLength = httpUrlConnection.contentLength.toLong()
             val acceptRanges = httpUrlConnection.getHeaderField("Accept-Ranges")
-            val isSupportSplitDownload = acceptRanges != null && acceptRanges.toLowerCase(Locale.ROOT) == "bytes"
+            isSupportSplitDownload = acceptRanges != null && acceptRanges.toLowerCase(Locale.ROOT) == "bytes"
+
 
             val downloadTaskRecord = mDownloadTaskCallback?.provideDownloadTaskHistory(this)
             var alreadyDownloadSize = downloadTaskRecord?.downloadSize?: 0L
@@ -89,6 +90,8 @@ class DownloadTask(val downloadUrl:String,
                 httpUrlConnection.disconnect()
                 return
             }
+
+            mDownloadTaskCallback?.onDownloadStart(this)
 
             if (isSupportSplitDownload && alreadyDownloadSize > 0){
                 createDownloadFile(tempDownloadFilePath,false)
