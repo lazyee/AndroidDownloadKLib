@@ -20,6 +20,8 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
     private var mDownloadDBHelper:DownloadDBHelper
     private val mSuccessDownloadTaskList = mutableListOf<DownloadTask>()
     private val mFailDownloadTaskList = mutableListOf<DownloadTask>()
+    private var mLastCallbackDownloadProgressTime = 0L
+    private var mDownloadProgressInfoList = mutableListOf<DownloadProgressInfo>()
 
     init {
         mDownloadDBHelper = DownloadDBHelper(mContext)
@@ -80,8 +82,8 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
         }
     }
 
-    private val mDownloadTaskCallback = object :DownloadTaskCallback{
 
+    private val mDownloadTaskCallback = object :DownloadTaskCallback{
         override fun provideDownloadTaskHistory(task: DownloadTask):DownloadTask? {
             return mDownloadDBHelper.getDownloadTaskByKey(task.key).firstOrNull()
         }
@@ -91,14 +93,24 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
             mDownloadCallbackHashMap.values.forEach { it.onDownloadStart(task.downloadUrl) }
         }
 
-        private var lastCallbackDownloadProgressTime = 0L
+
         override fun onDownloading(task: DownloadTask) {
             mDownloadDBHelper.updateDownloadTask(task)
+            var target = mDownloadProgressInfoList.find { it.downloadUrl == task.downloadUrl }
+            if(target == null){
+                target = DownloadProgressInfo(task.downloadUrl,task.downloadSize,task.contentLength)
+                mDownloadProgressInfoList.add(target)
+            }else{
+                target.currentDownloadSize = task.downloadSize
+                target.totalSize = task.contentLength
+            }
+
             //回调时间最少500ms
             val currentTimeMillis = System.currentTimeMillis()
-            if(currentTimeMillis - lastCallbackDownloadProgressTime > 500){
-                mDownloadCallbackHashMap.values.forEach { it.onDownloading(task.downloadUrl,task.downloadSize,task.contentLength) }
-                lastCallbackDownloadProgressTime = System.currentTimeMillis()
+            if(currentTimeMillis - mLastCallbackDownloadProgressTime > 500){
+                mDownloadCallbackHashMap.values.forEach { it.onDownloading(mDownloadProgressInfoList) }
+                mDownloadProgressInfoList.clear()
+                mLastCallbackDownloadProgressTime = currentTimeMillis
             }
         }
 
@@ -151,6 +163,7 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
 
     fun clearDownloadCallback(){
         mDownloadCallbackHashMap.clear()
+        mDownloadProgressInfoList.clear()
     }
 
     /**
