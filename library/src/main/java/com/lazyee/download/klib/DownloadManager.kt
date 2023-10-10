@@ -119,6 +119,7 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
         }
 
         override fun onDownloadComplete(task: DownloadTask) {
+            mDownloadProgressInfoList.removeAll { it.downloadUrl == task.downloadUrl }
             mDownloadTaskList.remove(task)
             mSuccessDownloadTaskList.add(task)
             mDownloadDBHelper.deleteByKey(task.key)
@@ -129,6 +130,7 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
         }
 
         override fun onDownloadFail(task: DownloadTask, errorMsg: String) {
+            mDownloadProgressInfoList.removeAll { it.downloadUrl == task.downloadUrl }
             mDownloadTaskList.remove(task)
             mFailDownloadTaskList.add(task)
             mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(task.downloadUrl,errorMsg) }
