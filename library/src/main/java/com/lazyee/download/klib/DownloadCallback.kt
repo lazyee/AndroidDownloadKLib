@@ -10,6 +10,6 @@ interface DownloadCallback{
     fun onDownloadStart(downloadUrl:String)
     fun onDownloading(downloadUrl:String, currentDownloadSize:Long,totalSize:Long)
     fun onDownloadComplete(downloadUrl:String,savePath: String)
-    fun onDownloadFail(errorMsg:String)
+    fun onDownloadFail(downloadUrl:String,errorMsg:String)
     fun onAllDownloadEnd(successUrlList:MutableList<String>,failUrlList:MutableList<String>)
 }

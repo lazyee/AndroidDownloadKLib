@@ -14,6 +14,7 @@ import java.util.Locale
  * Date: 2023/9/21 15:05
  */
 private const val TAG = "[InternalDownloadTask]"
+private const val MAX_RETRY_COUNT = 3//最大重试次数
 class DownloadTask(val downloadUrl:String,
                    val key:String,
                    private val savePath:String) {
@@ -23,8 +24,9 @@ class DownloadTask(val downloadUrl:String,
     var isSupportSplitDownload = false
     var contentLength = 0L
     val downloadFilePath:String
-    val tempDownloadFilePath:String
+    private val tempDownloadFilePath:String
     private val bufferSize = 32 * 1024//一次性读取32k数据
+    private var retryCount = 0//重试次数
 
     private var mCurrentDownloadHttpURLConnection: HttpURLConnection? = null
     private var mCurrentHeadHttpURLConnection: HttpURLConnection? = null
@@ -64,33 +66,29 @@ class DownloadTask(val downloadUrl:String,
     fun execute(){
         try{
             isReadyDownload = true
-            val downloadFileProperty = checkDownloadUrlHead(this)
-            if(downloadFileProperty == null){
-                LogUtils.e(TAG,"检查文件属性失败,结束下载任务:${downloadUrl}")
-                mDownloadTaskCallback?.onDownloadFail(this,"检查文件属性失败,结束下载任务:${downloadUrl}")
-            }
-            downloadFileProperty?:return
-            this.contentLength = downloadFileProperty.contentLength
-            this.isSupportSplitDownload = downloadFileProperty.isSupportSplitDownload
-
-            val downloadTaskRecord = mDownloadTaskCallback?.provideDownloadTaskHistory(this)
-            var alreadyDownloadSize = downloadTaskRecord?.downloadSize?: 0L
-
-            if(downloadTaskRecord != null && !checkConsistencyFromDB(downloadFileProperty,downloadTaskRecord)){
-                LogUtils.e(TAG,"在数据库记录中文件一致性校验不通过，准备重新下载")
-                alreadyDownloadSize = 0L
-            }
-
-            if(checkConsistencyFromLocalFile(downloadFileProperty) && alreadyDownloadSize == 0L){
-                LogUtils.e(TAG,"在本地文件检测到文件已经完整下载，跳过本次下载任务")
-                mDownloadTaskCallback?.onDownloadComplete(this)
-                return
-            }
-
             mDownloadTaskCallback?.onDownloadStart(this)
             val httpUrlConnection = URL(downloadUrl).openConnection() as HttpURLConnection
             mCurrentDownloadHttpURLConnection = httpUrlConnection
             httpUrlConnection.requestMethod = "GET"
+
+            contentLength = httpUrlConnection.contentLength.toLong()
+            val acceptRanges = httpUrlConnection.getHeaderField("Accept-Ranges")
+            val isSupportSplitDownload = acceptRanges != null && acceptRanges.toLowerCase(Locale.ROOT) == "bytes"
+
+            val downloadTaskRecord = mDownloadTaskCallback?.provideDownloadTaskHistory(this)
+            var alreadyDownloadSize = downloadTaskRecord?.downloadSize?: 0L
+
+            if(downloadTaskRecord != null && !checkConsistencyFromDB(contentLength,downloadTaskRecord)){
+                LogUtils.e(TAG,"未在数据库中找到相关下载记录或者数据库记录中文件一致性校验不通过，准备重新下载")
+                alreadyDownloadSize = 0L
+            }
+
+            if(checkConsistencyFromLocalFile(contentLength) && alreadyDownloadSize == 0L){
+                LogUtils.e(TAG,"在本地文件检测到文件已经完整下载，跳过本次下载任务")
+                mDownloadTaskCallback?.onDownloadComplete(this)
+                httpUrlConnection.disconnect()
+                return
+            }
 
             if (isSupportSplitDownload && alreadyDownloadSize > 0){
                 createDownloadFile(tempDownloadFilePath,false)
@@ -120,54 +118,44 @@ class DownloadTask(val downloadUrl:String,
                 File(tempDownloadFilePath).renameTo(File(downloadFilePath))
                 mDownloadTaskCallback?.onDownloadComplete(this)
                 httpUrlConnection.inputStream.close()
+                httpUrlConnection.disconnect()
             } else {
-                mDownloadTaskCallback?.onDownloadFail(this,"download fail,stateCode:${httpUrlConnection.responseCode}")
+                httpUrlConnection.disconnect()
+                if(!retry()){
+                    mDownloadTaskCallback?.onDownloadFail(this,"下载失败,状态码:${httpUrlConnection.responseCode}")
+                }
             }
-            httpUrlConnection.disconnect()
         } catch (e: Exception) {
-            mDownloadTaskCallback?.onDownloadFail(this,"exception:${e.message}")
             e.printStackTrace()
+            if(!retry()){
+                mDownloadTaskCallback?.onDownloadFail(this,"exception:${e.message}")
+                retryCount = 0
+            }
         }
     }
 
-    private fun checkDownloadUrlHead(task: DownloadTask): DownloadFileProperty? {
-        var downloadFIleProperty: DownloadFileProperty? = null
-        try {
-            val httpUrlConnection = URL(task.downloadUrl).openConnection() as HttpURLConnection
-            mCurrentHeadHttpURLConnection = httpUrlConnection
-            httpUrlConnection.requestMethod = "HEAD"
-            httpUrlConnection.connectTimeout = 3_000
-            httpUrlConnection.readTimeout = 3_000
-            val responseCode = httpUrlConnection.responseCode
-            LogUtils.e(TAG,"[HEAD]请求获取文件信息成功,链接:${task.downloadUrl}")
-
-            if(responseCode == HttpURLConnection.HTTP_OK){
-                val contentLength:Long = httpUrlConnection.contentLength.toLong()
-                LogUtils.e(TAG,"文件大小:[${contentLength}]")
-                val acceptRanges = httpUrlConnection.getHeaderField("Accept-Ranges")
-                val isSupportSplitDownload = acceptRanges != null && acceptRanges.toLowerCase(Locale.ROOT) == "bytes"
-                LogUtils.e(TAG,"链接:${task.downloadUrl}" +  if(isSupportSplitDownload)",支持分片下载" else "不支持分片下载")
-                downloadFIleProperty = DownloadFileProperty(contentLength,isSupportSplitDownload)
-            }
-            httpUrlConnection.disconnect()
-        }catch (e:Exception){
-            e.printStackTrace()
+    private fun retry(): Boolean {
+        if(retryCount < MAX_RETRY_COUNT){
+            execute()
+            retryCount++
+            LogUtils.e(TAG,"正在重试${retryCount}次下载任务[${downloadUrl}]")
+            return true
         }
 
-        return downloadFIleProperty
+        return false
     }
 
     /**
      * 检查文件一致性
      */
-    private fun checkConsistencyFromDB(property: DownloadFileProperty,downloadTaskRecord:DownloadTask): Boolean {
-        return property.contentLength == downloadTaskRecord.contentLength
+    private fun checkConsistencyFromDB(contentLength:Long ,downloadTaskRecord:DownloadTask): Boolean {
+        return contentLength == downloadTaskRecord.contentLength
     }
 
-    private fun checkConsistencyFromLocalFile(property: DownloadFileProperty): Boolean {
+    private fun checkConsistencyFromLocalFile(contentLength:Long): Boolean {
         val file = File(downloadFilePath)
         val fileLength = if(file.exists()) file.length() else 0L
-        return property.contentLength == fileLength
+        return contentLength == fileLength
     }
 
 

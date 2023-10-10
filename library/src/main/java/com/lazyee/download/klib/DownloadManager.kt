@@ -115,7 +115,7 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
         override fun onDownloadFail(task: DownloadTask, errorMsg: String) {
             mDownloadTaskList.remove(task)
             mFailDownloadTaskList.add(task)
-            mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(errorMsg) }
+            mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(task.downloadUrl,errorMsg) }
 
             if(mDownloadTaskList.isEmpty()){
                 callbackAllDownloadEnd()

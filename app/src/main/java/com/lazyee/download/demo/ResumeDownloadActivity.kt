@@ -159,7 +159,7 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
         }
     }
 
-    override fun onDownloadFail(errorMsg: String) {
+    override fun onDownloadFail(downloadUrl: String,errorMsg: String) {
         runOnUiThread {
             downloadInfoList.add(CallbackInfo(info = errorMsg))
             downloadInfoAdapter.notifyDataSetChanged()
