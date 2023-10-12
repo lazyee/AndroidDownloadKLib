@@ -5,7 +5,11 @@ import java.io.File
 import java.io.RandomAccessFile
 import java.net.HttpURLConnection
 import java.net.URL
+import java.net.URLEncoder
 import java.util.Locale
+import java.util.regex.Matcher
+import java.util.regex.Pattern
+
 
 /**
  * Author: leeorz
@@ -95,7 +99,7 @@ class DownloadTask(val downloadUrl:String,
             }
 
             mDownloadTaskCallback?.onDownloadStart(this)
-            val httpUrlConnection = URL(downloadUrl).openConnection() as HttpURLConnection
+            val httpUrlConnection = URL(urlEncodeChinese(downloadUrl)).openConnection() as HttpURLConnection
             mCurrentDownloadHttpURLConnection = httpUrlConnection
             httpUrlConnection.requestMethod = "GET"
             httpUrlConnection.readTimeout = 1_000
@@ -165,7 +169,7 @@ class DownloadTask(val downloadUrl:String,
         var downloadFIleProperty: DownloadFileProperty? = null
         try {
             if(isCancelTask)return null
-            val httpUrlConnection = URL(task.downloadUrl).openConnection() as HttpURLConnection
+            val httpUrlConnection = URL(urlEncodeChinese(task.downloadUrl)).openConnection() as HttpURLConnection
             mCurrentHeadHttpURLConnection = httpUrlConnection
             httpUrlConnection.requestMethod = "HEAD"
             httpUrlConnection.connect()
@@ -214,5 +218,23 @@ class DownloadTask(val downloadUrl:String,
         isCancelTask = true
         mCurrentHeadHttpURLConnection?.disconnect()
         mCurrentHeadHttpURLConnection?.disconnect()
+    }
+
+    private fun urlEncodeChinese(url:String): String {
+        var finalUrl = url
+        val pattern: Pattern = Pattern.compile("([\\u4e00-\\u9fa5]+)")
+        val matcher: Matcher = pattern.matcher(url)
+
+        if(matcher.find()){
+            val groupCount = matcher.groupCount()
+            repeat(groupCount){
+                val matchChinese = matcher.group(it + 1)
+                val urlEncodeChinese = URLEncoder.encode(matchChinese,"UTF-8")
+                finalUrl = finalUrl.replace(matchChinese,urlEncodeChinese)
+            }
+            LogUtils.e(TAG,"链接中发现中文,对中文进行URLEncode编码:$finalUrl")
+        }
+
+        return finalUrl
     }
 }
