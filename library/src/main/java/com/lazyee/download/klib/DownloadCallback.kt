@@ -11,10 +11,6 @@ interface DownloadCallback{
     fun onDownloading(downloadProgressInfoList:List<DownloadProgressInfo>)
     fun onDownloadComplete(downloadUrl:String,savePath: String)
     fun onDownloadFail(downloadUrl:String,errorMsg:String)
-//    fun onDownloadStart(taskList:List<DownloadTask>)
-//    fun onDownloading(taskList:List<DownloadTask>)
-//    fun onDownloadComplete(taskList:List<DownloadTask>)
-//    fun onDownloadFail(taskList:List<DownloadTask>)
     fun onAllDownloadEnd(successUrlList:MutableList<String>,failUrlList:MutableList<String>)
 }
 

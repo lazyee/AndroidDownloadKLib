@@ -28,6 +28,7 @@ class DownloadTask(val downloadUrl:String,
     private val bufferSize = 32 * 1024//一次性读取32k数据
     private var retryCount = 0//重试次数
 
+    private var isCancelTask = false
     private var mCurrentDownloadHttpURLConnection: HttpURLConnection? = null
     private var mCurrentHeadHttpURLConnection: HttpURLConnection? = null
     private var mDownloadTaskCallback:DownloadTaskCallback? = null
@@ -63,8 +64,9 @@ class DownloadTask(val downloadUrl:String,
         }
     }
 
-    fun execute(){
+    internal fun execute(){
         try{
+            if(isCancelTask)return
             isReadyDownload = true
             val downloadFileProperty = checkDownloadUrlHead(this)
             if(downloadFileProperty == null){
@@ -106,31 +108,36 @@ class DownloadTask(val downloadUrl:String,
                 LogUtils.e(TAG,"开始全量下载")
                 createDownloadFile(tempDownloadFilePath,true)
             }
+            when(httpUrlConnection.responseCode){
+                HttpURLConnection.HTTP_PARTIAL,
+                HttpURLConnection.HTTP_OK->{
+                    val buffer = ByteArray(bufferSize)
+                    var readCount = 0
+                    val randomAccessFile = RandomAccessFile(tempDownloadFilePath, "rwd")
+                    randomAccessFile.seek(alreadyDownloadSize)
+                    while (httpUrlConnection.inputStream.read(buffer, 0, buffer.count()).also { readCount = it } != -1 && !isCancelTask) {
+                        randomAccessFile.write(buffer, 0, readCount)
+                        alreadyDownloadSize += readCount
+                        downloadSize = alreadyDownloadSize
+                        mDownloadTaskCallback?.onDownloading(this)
+                    }
 
-            if (httpUrlConnection.responseCode == HttpURLConnection.HTTP_PARTIAL
-                || httpUrlConnection.responseCode == HttpURLConnection.HTTP_OK ) {
-
-                val buffer = ByteArray(bufferSize)
-                var readCount = 0
-                val randomAccessFile = RandomAccessFile(tempDownloadFilePath, "rwd")
-                randomAccessFile.seek(alreadyDownloadSize)
-                while (httpUrlConnection.inputStream.read(buffer, 0, buffer.count()).also { readCount = it } != -1) {
-                    randomAccessFile.write(buffer, 0, readCount)
-                    alreadyDownloadSize += readCount
-                    downloadSize = alreadyDownloadSize
-                    mDownloadTaskCallback?.onDownloading(this)
+                    LogUtils.e(TAG,"文件下载完成")
+                    //将临时文件改名为正式文件
+                    File(tempDownloadFilePath).renameTo(File(downloadFilePath))
+                    mDownloadTaskCallback?.onDownloadComplete(this)
+                    httpUrlConnection.inputStream.close()
+                    httpUrlConnection.disconnect()
                 }
-
-                LogUtils.e(TAG,"文件下载完成")
-                //将临时文件改名为正式文件
-                File(tempDownloadFilePath).renameTo(File(downloadFilePath))
-                mDownloadTaskCallback?.onDownloadComplete(this)
-                httpUrlConnection.inputStream.close()
-                httpUrlConnection.disconnect()
-            } else {
-                httpUrlConnection.disconnect()
-                if(!retry()){
+                HttpURLConnection.HTTP_NOT_FOUND->{
+                    mDownloadTaskCallback?.onDownloadFileNotFound(this)
                     mDownloadTaskCallback?.onDownloadFail(this,"下载失败,状态码:${httpUrlConnection.responseCode}")
+                }
+                else->{
+                    httpUrlConnection.disconnect()
+                    if(!retry()){
+                        mDownloadTaskCallback?.onDownloadFail(this,"下载失败,状态码:${httpUrlConnection.responseCode}")
+                    }
                 }
             }
         } catch (e: Exception) {
@@ -156,20 +163,27 @@ class DownloadTask(val downloadUrl:String,
     private fun checkDownloadUrlHead(task: DownloadTask): DownloadFileProperty? {
         var downloadFIleProperty: DownloadFileProperty? = null
         try {
+            if(isCancelTask)return null
             val httpUrlConnection = URL(task.downloadUrl).openConnection() as HttpURLConnection
             mCurrentHeadHttpURLConnection = httpUrlConnection
             httpUrlConnection.requestMethod = "HEAD"
             val responseCode = httpUrlConnection.responseCode
             LogUtils.e(TAG,"[HEAD]请求获取文件信息成功,链接:${task.downloadUrl}")
 
-            if(responseCode == HttpURLConnection.HTTP_OK){
-                val contentLength:Long = httpUrlConnection.contentLength.toLong()
-                LogUtils.e(TAG,"文件大小:[${contentLength}]")
-                val acceptRanges = httpUrlConnection.getHeaderField("Accept-Ranges")
-                val isSupportSplitDownload = acceptRanges != null && acceptRanges.toLowerCase(Locale.ROOT) == "bytes"
-                LogUtils.e(TAG,"链接:${task.downloadUrl}" +  if(isSupportSplitDownload)",支持分片下载" else "不支持分片下载")
-                downloadFIleProperty = DownloadFileProperty(contentLength,isSupportSplitDownload)
+            when(responseCode){
+                HttpURLConnection.HTTP_OK->{
+                    val contentLength:Long = httpUrlConnection.contentLength.toLong()
+                    LogUtils.e(TAG,"文件大小:[${contentLength}]")
+                    val acceptRanges = httpUrlConnection.getHeaderField("Accept-Ranges")
+                    val isSupportSplitDownload = acceptRanges != null && acceptRanges.toLowerCase(Locale.ROOT) == "bytes"
+                    LogUtils.e(TAG,"链接:${task.downloadUrl}" +  if(isSupportSplitDownload)",支持分片下载" else "不支持分片下载")
+                    downloadFIleProperty = DownloadFileProperty(contentLength,isSupportSplitDownload)
+                }
+                HttpURLConnection.HTTP_NOT_FOUND->{
+                    mDownloadTaskCallback?.onDownloadFileNotFound(this)
+                }
             }
+
             httpUrlConnection.disconnect()
         }catch (e:Exception){
             e.printStackTrace()
@@ -195,7 +209,8 @@ class DownloadTask(val downloadUrl:String,
     /**
      * 取消下载
      */
-    fun cancel(){
+    internal fun cancel(){
+        isCancelTask = true
         mCurrentHeadHttpURLConnection?.disconnect()
         mCurrentHeadHttpURLConnection?.disconnect()
     }

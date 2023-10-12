@@ -12,4 +12,5 @@ internal interface DownloadTaskCallback{
     fun onDownloading(task: DownloadTask)
     fun onDownloadComplete(task: DownloadTask)
     fun onDownloadFail(task: DownloadTask,errorMsg:String)
+    fun onDownloadFileNotFound(task: DownloadTask)
 }

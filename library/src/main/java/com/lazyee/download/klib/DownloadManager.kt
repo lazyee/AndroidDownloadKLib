@@ -1,6 +1,7 @@
 package com.lazyee.download.klib
 
 import android.content.Context
+import java.io.File
 import java.security.MessageDigest
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -14,6 +15,7 @@ import java.util.concurrent.Executors
 private const val TAG = "[DownloadManager]"
 class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreSize:Int){
     private val mDownloadTaskList = mutableListOf<DownloadTask>()
+    private val mDownloadingTaskList = mutableListOf<DownloadTask>()
     private var mDownloadCallbackHashMap = hashMapOf<Any,DownloadCallback>()
 //    private var mExecutorService: ExecutorService = Executors.newSingleThreadExecutor()
     private var mExecutorService: ExecutorService
@@ -51,10 +53,22 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
         return this
     }
 
+    fun download(downloadTask: DownloadTask){
+        download(listOf(downloadTask))
+    }
+
+    fun download(downloadTaskList:List<DownloadTask>){
+        downloadTaskList.forEach  {task->
+            if(mDownloadTaskList.find { it.downloadUrl == task.downloadUrl } == null){
+                task.setDownloadTaskCallback(mDownloadTaskCallback)
+                mDownloadTaskList.add(task)
+            }
+        }
+        realDownload()
+    }
 
     fun download(downloadUrl:String, savePath:String){
-        mDownloadTaskList.add(DownloadTask(downloadUrl, getKeyByUrl(downloadUrl), savePath))
-        realDownload()
+        download(listOf(downloadUrl),savePath)
     }
 
     fun download(downloadUrlList: List<String>,savePath: String){
@@ -75,11 +89,18 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
     }
 
     private fun realDownload(){
+        val removeTaskList = mutableListOf<DownloadTask>()
         mDownloadTaskList.forEach {task ->
-            if(task.isReadyDownload) return@forEach
-            if(task.isDownloading) return@forEach
-            mExecutorService.execute { task.execute() }
+            removeTaskList.add(task)
+            if(task.isReadyDownload || task.isDownloading){
+               return@forEach
+            }
+            mExecutorService.execute {
+                task.execute()
+                mDownloadingTaskList.add(task)
+            }
         }
+        mDownloadTaskList.removeAll(removeTaskList)
     }
 
 
@@ -120,24 +141,28 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
 
         override fun onDownloadComplete(task: DownloadTask) {
             mDownloadProgressInfoList.removeAll { it.downloadUrl == task.downloadUrl }
-            mDownloadTaskList.remove(task)
+            mDownloadingTaskList.remove(task)
             mSuccessDownloadTaskList.add(task)
             mDownloadDBHelper.deleteByKey(task.key)
             mDownloadCallbackHashMap.values.forEach { it.onDownloadComplete(task.downloadUrl,task.downloadFilePath) }
-            if(mDownloadTaskList.isEmpty()){
+            if(mDownloadingTaskList.isEmpty()){
                 callbackAllDownloadEnd()
             }
         }
 
         override fun onDownloadFail(task: DownloadTask, errorMsg: String) {
             mDownloadProgressInfoList.removeAll { it.downloadUrl == task.downloadUrl }
-            mDownloadTaskList.remove(task)
+            mDownloadingTaskList.remove(task)
             mFailDownloadTaskList.add(task)
             mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(task.downloadUrl,errorMsg) }
 
-            if(mDownloadTaskList.isEmpty()){
+            if(mDownloadingTaskList.isEmpty()){
                 callbackAllDownloadEnd()
             }
+        }
+
+        override fun onDownloadFileNotFound(task: DownloadTask) {
+            mDownloadDBHelper.deleteByKey(task.key)
         }
     }
 
@@ -176,6 +201,47 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
      * 取消下载
      */
     fun cancelAll(){
-        mDownloadTaskList.forEach { it.cancel() }
+        mDownloadTaskList.clear()
+        mDownloadingTaskList.forEach { it.cancel() }
+        mExecutorService.shutdownNow()
+    }
+
+    /**
+     * 从数据库中获取所有下载任务
+     */
+    fun getAllDownloadTaskFromDB(): MutableList<DownloadTask> {
+        return mDownloadDBHelper.getAllDownloadTask()
+    }
+
+    /**
+     * 删除下载临时文件
+     */
+    fun deleteDownloadTempFileByKey(key:String,savePath:String){
+        var realSavePath:String = savePath
+        if(!savePath.endsWith(File.separator)){
+            realSavePath = savePath +  File.separator
+        }
+        val tempDownloadFilePath = realSavePath + "_" + key
+        val tempFile = File(tempDownloadFilePath)
+        if(!tempFile.exists())return
+        if(tempFile.isFile){
+            tempFile.delete()
+        }
+    }
+
+    /**
+     * 清空下载临时文件
+     */
+    fun clearDownloadTempFile(savePath: String){
+        val tempFileDir = File(savePath)
+        if(!tempFileDir.exists())return
+        if(!tempFileDir.isDirectory)return
+        Thread{
+            tempFileDir.listFiles()?.forEach {file->
+                if(file.name.startsWith("_")){
+                    file.delete()
+                }
+            }
+        }.start()
     }
 }
