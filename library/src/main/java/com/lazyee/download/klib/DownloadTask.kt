@@ -99,6 +99,7 @@ class DownloadTask(val downloadUrl:String,
             mCurrentDownloadHttpURLConnection = httpUrlConnection
             httpUrlConnection.requestMethod = "GET"
             httpUrlConnection.readTimeout = 1_000
+            httpUrlConnection.connect()
 
             if (isSupportSplitDownload && alreadyDownloadSize > 0){
                 createDownloadFile(tempDownloadFilePath,false)
@@ -167,11 +168,11 @@ class DownloadTask(val downloadUrl:String,
             val httpUrlConnection = URL(task.downloadUrl).openConnection() as HttpURLConnection
             mCurrentHeadHttpURLConnection = httpUrlConnection
             httpUrlConnection.requestMethod = "HEAD"
-            val responseCode = httpUrlConnection.responseCode
-            LogUtils.e(TAG,"[HEAD]请求获取文件信息成功,链接:${task.downloadUrl}")
+            httpUrlConnection.connect()
 
-            when(responseCode){
+            when(httpUrlConnection.responseCode){
                 HttpURLConnection.HTTP_OK->{
+                    LogUtils.e(TAG,"[HEAD]请求获取文件信息成功,链接:${task.downloadUrl}")
                     val contentLength:Long = httpUrlConnection.contentLength.toLong()
                     LogUtils.e(TAG,"文件大小:[${contentLength}]")
                     val acceptRanges = httpUrlConnection.getHeaderField("Accept-Ranges")
