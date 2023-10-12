@@ -15,7 +15,6 @@ import java.util.concurrent.Executors
 private const val TAG = "[DownloadManager]"
 class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreSize:Int){
     private val mDownloadTaskList = mutableListOf<DownloadTask>()
-    private val mDownloadingTaskList = mutableListOf<DownloadTask>()
     private var mDownloadCallbackHashMap = hashMapOf<Any,DownloadCallback>()
 //    private var mExecutorService: ExecutorService = Executors.newSingleThreadExecutor()
     private var mExecutorService: ExecutorService
@@ -89,18 +88,10 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
     }
 
     private fun realDownload(){
-        val removeTaskList = mutableListOf<DownloadTask>()
-        mDownloadTaskList.forEach {task ->
-            removeTaskList.add(task)
-            if(task.isReadyDownload || task.isDownloading){
-               return@forEach
-            }
-            mExecutorService.execute {
-                task.execute()
-                mDownloadingTaskList.add(task)
-            }
+        mDownloadTaskList.forEach {task->
+            mExecutorService.execute { task.execute() }
         }
-        mDownloadTaskList.removeAll(removeTaskList)
+
     }
 
 
@@ -141,22 +132,22 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
 
         override fun onDownloadComplete(task: DownloadTask) {
             mDownloadProgressInfoList.removeAll { it.downloadUrl == task.downloadUrl }
-            mDownloadingTaskList.remove(task)
+            mDownloadTaskList.remove(task)
             mSuccessDownloadTaskList.add(task)
             mDownloadDBHelper.deleteByKey(task.key)
             mDownloadCallbackHashMap.values.forEach { it.onDownloadComplete(task.downloadUrl,task.downloadFilePath) }
-            if(mDownloadingTaskList.isEmpty()){
+            if(mDownloadTaskList.isEmpty()){
                 callbackAllDownloadEnd()
             }
         }
 
         override fun onDownloadFail(task: DownloadTask, errorMsg: String) {
             mDownloadProgressInfoList.removeAll { it.downloadUrl == task.downloadUrl }
-            mDownloadingTaskList.remove(task)
+            mDownloadTaskList.remove(task)
             mFailDownloadTaskList.add(task)
             mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(task.downloadUrl,errorMsg) }
 
-            if(mDownloadingTaskList.isEmpty()){
+            if(mDownloadTaskList.isEmpty()){
                 callbackAllDownloadEnd()
             }
         }
@@ -202,7 +193,7 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
      */
     fun cancelAll(){
         mDownloadTaskList.clear()
-        mDownloadingTaskList.forEach { it.cancel() }
+        mDownloadTaskList.forEach { it.cancel() }
         mExecutorService.shutdownNow()
     }
 
@@ -243,5 +234,13 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
                 }
             }
         }.start()
+    }
+
+    /**
+     * 获取下载文件
+     */
+    fun getDownloadFile(url:String, savePath: String): File {
+        val task = DownloadTask(url, md5(url),savePath)
+        return File(task.downloadFilePath)
     }
 }

@@ -23,8 +23,6 @@ class DownloadTask(val downloadUrl:String,
                    val key:String,
                    private val savePath:String) {
     var downloadSize = 0L
-    var isDownloading = false
-    var isReadyDownload = false//是否准备下载
     var isSupportSplitDownload = false
     var contentLength = 0L
     val downloadFilePath:String
@@ -71,7 +69,6 @@ class DownloadTask(val downloadUrl:String,
     internal fun execute(){
         try{
             if(isCancelTask)return
-            isReadyDownload = true
             val downloadFileProperty = checkDownloadUrlHead(this)
             if(downloadFileProperty == null){
                 if(!retry()){
