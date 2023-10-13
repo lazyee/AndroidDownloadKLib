@@ -159,6 +159,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
 
     private fun callbackAllDownloadEnd(){
         if(isCancelAll)return
+        if(mDownloadTaskList.isNotEmpty())return
         val successDownloadUrlList = mutableListOf<String>()
         val failDownloadUrlList = mutableListOf<String>()
         mSuccessDownloadTaskList.forEach{
