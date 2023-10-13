@@ -1,6 +1,7 @@
 package com.lazyee.download.klib
 
 import android.text.TextUtils
+import java.io.BufferedInputStream
 import java.io.File
 import java.io.RandomAccessFile
 import java.net.HttpURLConnection
@@ -9,6 +10,7 @@ import java.net.URLEncoder
 import java.util.Locale
 import java.util.regex.Matcher
 import java.util.regex.Pattern
+import kotlin.system.measureTimeMillis
 
 
 /**
@@ -19,6 +21,8 @@ import java.util.regex.Pattern
  */
 private const val TAG = "[DownloadTask]"
 private const val MAX_RETRY_COUNT = 3//最大重试次数
+private const val CONNECTION_TIMEOUT = 3_000
+private const val READ_TIMEOUT = 3_000
 class DownloadTask(val downloadUrl:String,
                    val key:String,
                    private val savePath:String) {
@@ -68,21 +72,29 @@ class DownloadTask(val downloadUrl:String,
 
     internal fun execute(){
         try{
-            if(isCancelTask)return
+            if(isCancelTask){
+                LogUtils.e(TAG,"下载任务已经取消!!!")
+                return
+            }
             val downloadFileProperty = checkDownloadUrlHead(this)
             if(downloadFileProperty == null){
                 if(!retry()){
                     LogUtils.e(TAG,"检查文件属性失败,结束下载任务:${downloadUrl}")
-                    callbackDownloadFail("检查文件属性失败,结束下载任务:${downloadUrl}")
+                    callbackDownloadFail(DownloadException(this,"检查文件属性失败,结束下载任务:${downloadUrl}"))
                 }
                 return
             }
 
             this.contentLength = downloadFileProperty.contentLength
             this.isSupportSplitDownload = downloadFileProperty.isSupportSplitDownload
-
             val downloadTaskRecord = mDownloadTaskCallback?.provideDownloadTaskHistory(this)
-            var alreadyDownloadSize = downloadTaskRecord?.downloadSize?: 0L
+
+            //获取本地临时下载文件的文件大小，此大小作为目前已经下载的文件大小
+            val tempDownloadFile = File(tempDownloadFilePath)
+            var alreadyDownloadSize = 0L
+            if(tempDownloadFile.exists()){
+                alreadyDownloadSize = tempDownloadFile.length()
+            }
 
             if(downloadTaskRecord != null && !checkConsistencyFromDB(downloadFileProperty,downloadTaskRecord)){
                 LogUtils.e(TAG,"未在数据库中找到相关下载记录或者数据库记录中文件一致性校验不通过，准备重新下载")
@@ -99,7 +111,8 @@ class DownloadTask(val downloadUrl:String,
             val httpUrlConnection = URL(urlEncodeChinese(downloadUrl)).openConnection() as HttpURLConnection
             mCurrentDownloadHttpURLConnection = httpUrlConnection
             httpUrlConnection.requestMethod = "GET"
-            httpUrlConnection.readTimeout = 1_000
+            httpUrlConnection.readTimeout = READ_TIMEOUT
+            httpUrlConnection.connectTimeout = CONNECTION_TIMEOUT
             if (isSupportSplitDownload && alreadyDownloadSize > 0){
                 createDownloadFile(tempDownloadFilePath,false)
                 httpUrlConnection.setRequestProperty("Range", "bytes=$alreadyDownloadSize-")
@@ -114,12 +127,14 @@ class DownloadTask(val downloadUrl:String,
                 HttpURLConnection.HTTP_PARTIAL,
                 HttpURLConnection.HTTP_OK->{
                     val buffer = ByteArray(bufferSize)
-                    var readCount = 0
+                    var readSize = 0
                     val randomAccessFile = RandomAccessFile(tempDownloadFilePath, "rwd")
                     randomAccessFile.seek(alreadyDownloadSize)
-                    while (httpUrlConnection.inputStream.read(buffer, 0, buffer.count()).also { readCount = it } != -1 && !isCancelTask) {
-                        randomAccessFile.write(buffer, 0, readCount)
-                        alreadyDownloadSize += readCount
+                    val bufferedInputStream = BufferedInputStream(httpUrlConnection.inputStream)
+
+                    while (bufferedInputStream.read(buffer).also { readSize = it } != -1 && !isCancelTask) {
+                        randomAccessFile.write(buffer, 0, readSize)
+                        alreadyDownloadSize += readSize
                         downloadSize = alreadyDownloadSize
                         mDownloadTaskCallback?.onDownloading(this)
                     }
@@ -132,28 +147,27 @@ class DownloadTask(val downloadUrl:String,
                     httpUrlConnection.disconnect()
                 }
                 HttpURLConnection.HTTP_NOT_FOUND->{
-                    mDownloadTaskCallback?.onDownloadFileNotFound(this)
-                    callbackDownloadFail("下载失败,状态码:${httpUrlConnection.responseCode}")
+                    callbackDownloadFail(DownloadFileNotFoundException(this,"下载失败,状态码:${httpUrlConnection.responseCode},无法找到下载文件"))
                 }
                 else->{
                     httpUrlConnection.disconnect()
                     if(!retry()){
-                        callbackDownloadFail("下载失败,状态码:${httpUrlConnection.responseCode}")
+                        callbackDownloadFail(DownloadException(this,"下载失败,状态码:${httpUrlConnection.responseCode}"))
                     }
                 }
             }
         } catch (e: Exception) {
             e.printStackTrace()
             if(!retry()){
-                callbackDownloadFail("exception:${e.message}")
+                callbackDownloadFail(DownloadException(this,"${e.message}"))
                 retryCount = 0
             }
         }
     }
 
-    private fun callbackDownloadFail(errorMsg:String){
+    private fun callbackDownloadFail(exception :DownloadException){
         if(isCancelTask)return
-        mDownloadTaskCallback?.onDownloadFail(this,errorMsg)
+        mDownloadTaskCallback?.onDownloadFail(exception)
     }
 
 
@@ -172,9 +186,12 @@ class DownloadTask(val downloadUrl:String,
         var downloadFIleProperty: DownloadFileProperty? = null
         try {
             if(isCancelTask)return null
+            LogUtils.e(TAG,"开始检查下载文件属性,链接:${task.downloadUrl}")
             val httpUrlConnection = URL(urlEncodeChinese(task.downloadUrl)).openConnection() as HttpURLConnection
             mCurrentHeadHttpURLConnection = httpUrlConnection
             httpUrlConnection.requestMethod = "HEAD"
+            httpUrlConnection.connectTimeout = CONNECTION_TIMEOUT
+            httpUrlConnection.readTimeout = READ_TIMEOUT
             httpUrlConnection.connect()
 
             when(httpUrlConnection.responseCode){
@@ -187,9 +204,6 @@ class DownloadTask(val downloadUrl:String,
                     LogUtils.e(TAG,"链接:${task.downloadUrl}" +  if(isSupportSplitDownload)",支持分片下载" else "不支持分片下载")
                     downloadFIleProperty = DownloadFileProperty(contentLength,isSupportSplitDownload)
                 }
-                HttpURLConnection.HTTP_NOT_FOUND->{
-                    mDownloadTaskCallback?.onDownloadFileNotFound(this)
-                }
             }
 
             httpUrlConnection.disconnect()
@@ -199,6 +213,8 @@ class DownloadTask(val downloadUrl:String,
 
         return downloadFIleProperty
     }
+
+
 
     /**
      * 检查文件一致性

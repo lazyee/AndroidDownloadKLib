@@ -13,9 +13,11 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.lazyee.download.klib.DownloadCallback
+import com.lazyee.download.klib.DownloadException
 import com.lazyee.download.klib.DownloadManager
-import com.lazyee.download.klib.DownloadProgressInfo
+import com.lazyee.download.klib.DownloadTask
 import java.io.File
+import java.lang.Exception
 
 /**
  * Author: leeorz
@@ -137,6 +139,8 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
 
         btnCancelDownload.setOnClickListener{
             mDownloadManager.cancelAll()
+            downloadSuccessSize = 0
+            downloadFailSize = 0
         }
     }
 
@@ -147,21 +151,17 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
 
     override fun onAllDownloadEnd(successUrlList: MutableList<String>, failUrlList: MutableList<String>) {
         Log.e("TAG","onAllDownloadEnd")
-        runOnUiThread {
-            addNewCallbackInfoToList("downloadInfo","下载成功:${successUrlList.size};下载失败:${failUrlList.size}")
-        }
+        addNewCallbackInfoToList("downloadInfo","下载成功:${successUrlList.size};下载失败:${failUrlList.size}")
     }
 
 
     @SuppressLint("NotifyDataSetChanged")
-    override fun onDownloadComplete(downloadUrl: String, savePath: String) {
-        runOnUiThread {
-            downloadSuccessSize++
-            addNewCallbackInfoToList("downloadInfo","下载成功${downloadSuccessSize};下载失败${downloadFailSize}")
-            val target = downloadInfoList.find { it.key == downloadUrl }
-            downloadInfoList.remove(target)
-            downloadInfoAdapter.notifyDataSetChanged()
-        }
+    override fun onDownloadComplete(task: DownloadTask) {
+        downloadSuccessSize++
+        addNewCallbackInfoToList("downloadInfo","下载成功${downloadSuccessSize};下载失败${downloadFailSize}")
+        val target = downloadInfoList.find { it.key == task.downloadUrl }
+        downloadInfoList.remove(target)
+        downloadInfoAdapter.notifyDataSetChanged()
     }
 
 
@@ -184,25 +184,21 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
 
     }
 
-    override fun onDownloadFail(downloadUrl: String,errorMsg: String) {
-        runOnUiThread {
-            downloadFailSize++
-            addNewCallbackInfoToList("downloadInfo","下载成功${downloadSuccessSize};下载失败${downloadFailSize}")
-            val target = downloadInfoList.find { it.key == downloadUrl }
-            downloadInfoList.remove(target)
-            downloadInfoAdapter.notifyDataSetChanged()
-        }
+    override fun onDownloadFail(exception: DownloadException) {
+        downloadFailSize++
+        addNewCallbackInfoToList("downloadInfo","下载成功${downloadSuccessSize};下载失败${downloadFailSize}")
+        val target = downloadInfoList.find { it.key == exception.task.downloadUrl }
+        downloadInfoList.remove(target)
+        downloadInfoAdapter.notifyDataSetChanged()
     }
 
-    override fun onDownloadStart(downloadUrl: String) {
-        runOnUiThread { addNewCallbackInfoToList(downloadUrl,"资源[${getFileNameFromUrl(downloadUrl)}]开始下载")}
+    override fun onDownloadStart(task: DownloadTask) {
+        addNewCallbackInfoToList(task.downloadUrl,"资源[${getFileNameFromUrl(task.downloadUrl)}]开始下载")
     }
 
-    override fun onDownloading(downloadProgressInfoList: List<DownloadProgressInfo>) {
-        runOnUiThread {
-            downloadProgressInfoList.forEach {info ->
-                addNewCallbackInfoToList(info.downloadUrl,"资源[${getFileNameFromUrl(info.downloadUrl)}]正在下载[${(info.currentDownloadSize * 100f / info.totalSize).toInt()}%]")
-            }
+    override fun onDownloading(taskList: List<DownloadTask>) {
+        taskList.forEach {task ->
+            addNewCallbackInfoToList(task.downloadUrl,"资源[${getFileNameFromUrl(task.downloadUrl)}]正在下载[${(task.downloadSize * 100f / task.contentLength).toInt()}%]")
         }
     }
 

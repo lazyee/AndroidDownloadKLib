@@ -7,11 +7,9 @@ package com.lazyee.download.klib
  * Date: 2023/9/21 15:07
  */
 interface DownloadCallback{
-    fun onDownloadStart(downloadUrl:String)
-    fun onDownloading(downloadProgressInfoList:List<DownloadProgressInfo>)
-    fun onDownloadComplete(downloadUrl:String,savePath: String)
-    fun onDownloadFail(downloadUrl:String,errorMsg:String)
+    fun onDownloadStart(task: DownloadTask)
+    fun onDownloading(taskList:List<DownloadTask>)
+    fun onDownloadComplete(task: DownloadTask)
+    fun onDownloadFail(exception: DownloadException)
     fun onAllDownloadEnd(successUrlList:MutableList<String>,failUrlList:MutableList<String>)
 }
-
-data class DownloadProgressInfo(val downloadUrl:String, var currentDownloadSize:Long,var totalSize:Long)

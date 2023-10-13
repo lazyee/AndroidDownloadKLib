@@ -2,7 +2,6 @@ package com.lazyee.download.klib
 
 import android.content.Context
 import java.io.File
-import java.lang.ref.WeakReference
 import java.security.MessageDigest
 import java.util.WeakHashMap
 import java.util.concurrent.ExecutorService
@@ -16,16 +15,17 @@ import java.util.concurrent.Executors
  */
 private const val TAG = "[DownloadManager]"
 class DownloadManager private constructor(mContext: Context,private val mDownloadThreadCoreSize:Int){
+    private val mDownloadingTaskList = mutableListOf<DownloadTask>()
     private val mDownloadTaskList = mutableListOf<DownloadTask>()
     private var mDownloadCallbackHashMap = WeakHashMap<Any,DownloadCallback>()
-//    private var mExecutorService: ExecutorService = Executors.newSingleThreadExecutor()
     private var mExecutorService: ExecutorService
     private var mDownloadDBHelper:DownloadDBHelper
     private val mSuccessDownloadTaskList = mutableListOf<DownloadTask>()
     private val mFailDownloadTaskList = mutableListOf<DownloadTask>()
     private var mLastCallbackDownloadProgressTime = 0L
-    private var mDownloadProgressInfoList = mutableListOf<DownloadProgressInfo>()
-    private var isCancelAll = false
+    private var mCallbackDownloadingTaskList = mutableListOf<DownloadTask>()
+    private var mDownloadHandler = DownloadHandler(mDownloadCallbackHashMap)
+
     init {
         mDownloadDBHelper = DownloadDBHelper(mContext)
         mExecutorService = Executors.newFixedThreadPool(mDownloadThreadCoreSize)
@@ -67,7 +67,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
                 mDownloadTaskList.add(task)
             }
         }
-        realDownload()
+        internalDownload()
     }
 
     fun download(downloadUrl:String, savePath:String){
@@ -88,18 +88,17 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
                 mDownloadTaskList.add(task)
             }
         }
-        realDownload()
+        internalDownload()
     }
 
-    private fun realDownload(){
-        isCancelAll = false
-        mDownloadTaskList.forEach {task->
-            mExecutorService.execute {
-                if(isCancelAll)return@execute
-                task.execute()
+    private fun internalDownload(){
+        synchronized(this){
+            while (mDownloadTaskList.isNotEmpty() && mDownloadingTaskList.size < mDownloadThreadCoreSize){
+                val task = mDownloadTaskList.removeFirst()
+                mDownloadingTaskList.add(task)
+                mExecutorService.execute { task.execute() }
             }
         }
-
     }
 
 
@@ -110,70 +109,89 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
 
         override fun onDownloadStart(task: DownloadTask) {
             mDownloadDBHelper.updateDownloadTask(task)
-            mDownloadCallbackHashMap.values.forEach { it.onDownloadStart(task.downloadUrl) }
+            callbackByHandler{
+                mDownloadCallbackHashMap.values.forEach { it.onDownloadStart(task) }
+            }
         }
 
 
         override fun onDownloading(task: DownloadTask) {
-            mDownloadDBHelper.updateDownloadTask(task)
-            var target = mDownloadProgressInfoList.find { it.downloadUrl == task.downloadUrl }
-            if(target == null){
-                target = DownloadProgressInfo(task.downloadUrl,task.downloadSize,task.contentLength)
-                mDownloadProgressInfoList.add(target)
-            }else{
-                target.currentDownloadSize = task.downloadSize
-                target.totalSize = task.contentLength
+
+            if(!mCallbackDownloadingTaskList.contains(task)){
+                mCallbackDownloadingTaskList.add(task)
             }
 
             //回调时间最少500ms
             val currentTimeMillis = System.currentTimeMillis()
             if(currentTimeMillis - mLastCallbackDownloadProgressTime > 500){
-                val callbackDownloadProgressInfoList = mutableListOf<DownloadProgressInfo>()
-                mDownloadProgressInfoList.forEach { callbackDownloadProgressInfoList.add(it) }
+                val callbackDownloadProgressInfoList = mutableListOf<DownloadTask>()
+                mCallbackDownloadingTaskList.forEach { callbackDownloadProgressInfoList.add(it) }
                 if(callbackDownloadProgressInfoList.isNotEmpty()){
-                    mDownloadCallbackHashMap.values.forEach { it.onDownloading(callbackDownloadProgressInfoList) }
+                    callbackByHandler{
+                        mDownloadCallbackHashMap.values.forEach { it.onDownloading(callbackDownloadProgressInfoList) }
+                    }
                 }
-                mDownloadProgressInfoList.clear()
+
+                mCallbackDownloadingTaskList.clear()
                 mLastCallbackDownloadProgressTime = currentTimeMillis
             }
         }
 
         override fun onDownloadComplete(task: DownloadTask) {
-            mDownloadProgressInfoList.removeAll { it.downloadUrl == task.downloadUrl }
-            mDownloadTaskList.remove(task)
+            mCallbackDownloadingTaskList.removeAll { it.downloadUrl == task.downloadUrl }
+            mDownloadingTaskList.remove(task)
             mSuccessDownloadTaskList.add(task)
             mDownloadDBHelper.deleteByKey(task.key)
-            mDownloadCallbackHashMap.values.forEach { it.onDownloadComplete(task.downloadUrl,task.downloadFilePath) }
+
+            callbackByHandler{
+                mDownloadCallbackHashMap.values.forEach { it.onDownloadComplete(task) }
+            }
+            internalDownload()
             callbackAllDownloadEnd()
+
         }
 
-        override fun onDownloadFail(task: DownloadTask, errorMsg: String) {
-            mDownloadProgressInfoList.removeAll { it.downloadUrl == task.downloadUrl }
-            mDownloadTaskList.remove(task)
+        override fun onDownloadFail(exception: DownloadException) {
+            val task = exception.task
+            handleDownloadException(exception)
+
+            mCallbackDownloadingTaskList.removeAll { it.downloadUrl == task.downloadUrl }
+            mDownloadingTaskList.remove(task)
             mFailDownloadTaskList.add(task)
-            mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(task.downloadUrl,errorMsg) }
+
+            callbackByHandler{
+                mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(exception) }
+            }
+            internalDownload()
             callbackAllDownloadEnd()
         }
+    }
 
-        override fun onDownloadFileNotFound(task: DownloadTask) {
+    private fun handleDownloadException(exception: DownloadException){
+        val task = exception.task
+        if(exception is DownloadFileNotFoundException){
             mDownloadDBHelper.deleteByKey(task.key)
         }
     }
 
+    private fun callbackByHandler(callback:()->Unit){
+        mDownloadHandler.sendMessage(mDownloadHandler.obtainDownloadMessage{
+            LogUtils.e(TAG,"thread:${Thread.currentThread().name }")
+            callback()
+        })
+    }
+
     private fun callbackAllDownloadEnd(){
-        if(isCancelAll)return
-        if(mDownloadTaskList.isNotEmpty())return
+        if(mDownloadTaskList.isNotEmpty() || mDownloadingTaskList.isNotEmpty())return
         val successDownloadUrlList = mutableListOf<String>()
         val failDownloadUrlList = mutableListOf<String>()
-        mSuccessDownloadTaskList.forEach{
-            successDownloadUrlList.add(it.downloadUrl)
-        }
+        mSuccessDownloadTaskList.forEach{ successDownloadUrlList.add(it.downloadUrl) }
 
-        mFailDownloadTaskList.forEach{
-            failDownloadUrlList.add(it.downloadUrl)
-        }
+        mFailDownloadTaskList.forEach{ failDownloadUrlList.add(it.downloadUrl) }
 
-        mDownloadCallbackHashMap.values.forEach { it.onAllDownloadEnd(successDownloadUrlList,failDownloadUrlList) }
+        mDownloadHandler.sendMessage(mDownloadHandler.obtainDownloadMessage {
+            mDownloadCallbackHashMap.values.forEach { it.onAllDownloadEnd(successDownloadUrlList,failDownloadUrlList) }
+        })
         mSuccessDownloadTaskList.clear()
         mFailDownloadTaskList.clear()
     }
@@ -190,16 +208,19 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
 
     fun clearDownloadCallback(){
         mDownloadCallbackHashMap.clear()
-        mDownloadProgressInfoList.clear()
+        mCallbackDownloadingTaskList.clear()
     }
 
     /**
      * 取消下载
      */
     fun cancelAll(){
-        isCancelAll = true
-        mDownloadTaskList.forEach { it.cancel() }
+        mDownloadingTaskList.forEach { it.cancel() }
+        mDownloadingTaskList.clear()
         mDownloadTaskList.clear()
+        mSuccessDownloadTaskList.clear()
+        mFailDownloadTaskList.clear()
+        mCallbackDownloadingTaskList.clear()
     }
 
     /**
