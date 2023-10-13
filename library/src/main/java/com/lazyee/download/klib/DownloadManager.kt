@@ -2,7 +2,9 @@ package com.lazyee.download.klib
 
 import android.content.Context
 import java.io.File
+import java.lang.ref.WeakReference
 import java.security.MessageDigest
+import java.util.WeakHashMap
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -15,7 +17,7 @@ import java.util.concurrent.Executors
 private const val TAG = "[DownloadManager]"
 class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreSize:Int){
     private val mDownloadTaskList = mutableListOf<DownloadTask>()
-    private var mDownloadCallbackHashMap = hashMapOf<Any,DownloadCallback>()
+    private var mDownloadCallbackHashMap = WeakHashMap<Any,DownloadCallback>()
 //    private var mExecutorService: ExecutorService = Executors.newSingleThreadExecutor()
     private var mExecutorService: ExecutorService
     private var mDownloadDBHelper:DownloadDBHelper
