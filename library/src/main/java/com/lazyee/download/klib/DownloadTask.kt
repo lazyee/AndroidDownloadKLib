@@ -100,8 +100,6 @@ class DownloadTask(val downloadUrl:String,
             mCurrentDownloadHttpURLConnection = httpUrlConnection
             httpUrlConnection.requestMethod = "GET"
             httpUrlConnection.readTimeout = 1_000
-            httpUrlConnection.connect()
-
             if (isSupportSplitDownload && alreadyDownloadSize > 0){
                 createDownloadFile(tempDownloadFilePath,false)
                 httpUrlConnection.setRequestProperty("Range", "bytes=$alreadyDownloadSize-")
@@ -110,6 +108,8 @@ class DownloadTask(val downloadUrl:String,
                 LogUtils.e(TAG,"开始全量下载")
                 createDownloadFile(tempDownloadFilePath,true)
             }
+
+            httpUrlConnection.connect()
             when(httpUrlConnection.responseCode){
                 HttpURLConnection.HTTP_PARTIAL,
                 HttpURLConnection.HTTP_OK->{
