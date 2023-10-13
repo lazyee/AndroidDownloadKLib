@@ -160,7 +160,7 @@ class DownloadTask(val downloadUrl:String,
     private fun retry(): Boolean {
         if(retryCount < MAX_RETRY_COUNT){
             retryCount++
-            LogUtils.e(TAG,"正在重试第${retryCount}次下载任务[${downloadUrl}]")
+            LogUtils.e(TAG,"正在第${retryCount}次重试下载任务[${downloadUrl}]")
             execute()
             return true
         }

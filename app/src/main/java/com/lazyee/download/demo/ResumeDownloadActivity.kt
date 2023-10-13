@@ -2,6 +2,7 @@ package com.lazyee.download.demo
 
 import android.annotation.SuppressLint
 import android.os.Bundle
+import android.util.Log
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -27,6 +28,7 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
     private val downloadInfoAdapter = DownloadInfoAdapter()
     private val rvDownloadInfo by lazy { findViewById<RecyclerView>(R.id.rvDownloadInfo) }
     private val btnStartDownload by lazy { findViewById<Button>(R.id.btnStartDownload) }
+    private val btnCancelDownload by lazy { findViewById<Button>(R.id.btnCancelDownload) }
     private val mDownloadManager by lazy { DownloadManager.with(this).debug(true) }
     private val mTestDownloadUrlList = mutableListOf<String>()
     private var downloadSuccessSize = 0
@@ -132,6 +134,10 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
             val savePath = filesDir.absolutePath + File.separator + "cache"
             mDownloadManager.download(mTestDownloadUrlList,savePath)
         }
+
+        btnCancelDownload.setOnClickListener{
+            mDownloadManager.cancelAll()
+        }
     }
 
     override fun onDestroy() {
@@ -140,6 +146,7 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
     }
 
     override fun onAllDownloadEnd(successUrlList: MutableList<String>, failUrlList: MutableList<String>) {
+        Log.e("TAG","onAllDownloadEnd")
         runOnUiThread {
             addNewCallbackInfoToList("downloadInfo","下载成功:${successUrlList.size};下载失败:${failUrlList.size}")
         }

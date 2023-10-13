@@ -25,7 +25,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
     private val mFailDownloadTaskList = mutableListOf<DownloadTask>()
     private var mLastCallbackDownloadProgressTime = 0L
     private var mDownloadProgressInfoList = mutableListOf<DownloadProgressInfo>()
-
+    private var isCancelAll = false
     init {
         mDownloadDBHelper = DownloadDBHelper(mContext)
         mExecutorService = Executors.newFixedThreadPool(mDownloadThreadCoreSize)
@@ -92,6 +92,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
     }
 
     private fun realDownload(){
+        isCancelAll = false
         mDownloadTaskList.forEach {task->
             mExecutorService.execute { task.execute() }
         }
@@ -140,9 +141,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
             mSuccessDownloadTaskList.add(task)
             mDownloadDBHelper.deleteByKey(task.key)
             mDownloadCallbackHashMap.values.forEach { it.onDownloadComplete(task.downloadUrl,task.downloadFilePath) }
-            if(mDownloadTaskList.isEmpty()){
-                callbackAllDownloadEnd()
-            }
+            callbackAllDownloadEnd()
         }
 
         override fun onDownloadFail(task: DownloadTask, errorMsg: String) {
@@ -150,10 +149,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
             mDownloadTaskList.remove(task)
             mFailDownloadTaskList.add(task)
             mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(task.downloadUrl,errorMsg) }
-
-            if(mDownloadTaskList.isEmpty()){
-                callbackAllDownloadEnd()
-            }
+            callbackAllDownloadEnd()
         }
 
         override fun onDownloadFileNotFound(task: DownloadTask) {
@@ -162,6 +158,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
     }
 
     private fun callbackAllDownloadEnd(){
+        if(isCancelAll)return
         val successDownloadUrlList = mutableListOf<String>()
         val failDownloadUrlList = mutableListOf<String>()
         mSuccessDownloadTaskList.forEach{
@@ -196,6 +193,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
      * 取消下载
      */
     fun cancelAll(){
+        isCancelAll = true
         mDownloadTaskList.forEach { it.cancel() }
         mDownloadTaskList.clear()
     }
