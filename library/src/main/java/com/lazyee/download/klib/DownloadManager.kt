@@ -15,7 +15,7 @@ import java.util.concurrent.Executors
  * Date: 2023/9/21 13:59
  */
 private const val TAG = "[DownloadManager]"
-class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreSize:Int){
+class DownloadManager private constructor(mContext: Context,private val mDownloadThreadCoreSize:Int){
     private val mDownloadTaskList = mutableListOf<DownloadTask>()
     private var mDownloadCallbackHashMap = WeakHashMap<Any,DownloadCallback>()
 //    private var mExecutorService: ExecutorService = Executors.newSingleThreadExecutor()
@@ -53,6 +53,8 @@ class DownloadManager private constructor(mContext: Context,mDownloadThreadCoreS
         LogUtils.init(isDebug)
         return this
     }
+
+    fun getDownloadThreadCoreSize():Int = mDownloadThreadCoreSize
 
     fun download(downloadTask: DownloadTask){
         download(listOf(downloadTask))
