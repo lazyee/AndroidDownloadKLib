@@ -73,7 +73,7 @@ class DownloadTask(val downloadUrl:String,
             if(downloadFileProperty == null){
                 if(!retry()){
                     LogUtils.e(TAG,"检查文件属性失败,结束下载任务:${downloadUrl}")
-                    mDownloadTaskCallback?.onDownloadFail(this,"检查文件属性失败,结束下载任务:${downloadUrl}")
+                    callbackDownloadFail("检查文件属性失败,结束下载任务:${downloadUrl}")
                 }
                 return
             }
@@ -133,23 +133,29 @@ class DownloadTask(val downloadUrl:String,
                 }
                 HttpURLConnection.HTTP_NOT_FOUND->{
                     mDownloadTaskCallback?.onDownloadFileNotFound(this)
-                    mDownloadTaskCallback?.onDownloadFail(this,"下载失败,状态码:${httpUrlConnection.responseCode}")
+                    callbackDownloadFail("下载失败,状态码:${httpUrlConnection.responseCode}")
                 }
                 else->{
                     httpUrlConnection.disconnect()
                     if(!retry()){
-                        mDownloadTaskCallback?.onDownloadFail(this,"下载失败,状态码:${httpUrlConnection.responseCode}")
+                        callbackDownloadFail("下载失败,状态码:${httpUrlConnection.responseCode}")
                     }
                 }
             }
         } catch (e: Exception) {
             e.printStackTrace()
             if(!retry()){
-                mDownloadTaskCallback?.onDownloadFail(this,"exception:${e.message}")
+                callbackDownloadFail("exception:${e.message}")
                 retryCount = 0
             }
         }
     }
+
+    private fun callbackDownloadFail(errorMsg:String){
+        if(isCancelTask)return
+        mDownloadTaskCallback?.onDownloadFail(this,errorMsg)
+    }
+
 
     private fun retry(): Boolean {
         if(retryCount < MAX_RETRY_COUNT){
