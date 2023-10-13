@@ -196,8 +196,8 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
      * 取消下载
      */
     fun cancelAll(){
-        mDownloadTaskList.clear()
         mDownloadTaskList.forEach { it.cancel() }
+        mDownloadTaskList.clear()
         mExecutorService.shutdownNow()
     }
 
