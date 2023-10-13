@@ -17,7 +17,7 @@ import java.util.regex.Pattern
  * Description:
  * Date: 2023/9/21 15:05
  */
-private const val TAG = "[InternalDownloadTask]"
+private const val TAG = "[DownloadTask]"
 private const val MAX_RETRY_COUNT = 3//最大重试次数
 class DownloadTask(val downloadUrl:String,
                    val key:String,
@@ -154,7 +154,7 @@ class DownloadTask(val downloadUrl:String,
     private fun retry(): Boolean {
         if(retryCount < MAX_RETRY_COUNT){
             retryCount++
-            LogUtils.e(TAG,"正在重试${retryCount}次下载任务[${downloadUrl}]")
+            LogUtils.e(TAG,"正在重试第${retryCount}次下载任务[${downloadUrl}]")
             execute()
             return true
         }
