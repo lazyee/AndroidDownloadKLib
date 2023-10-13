@@ -94,7 +94,10 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
     private fun realDownload(){
         isCancelAll = false
         mDownloadTaskList.forEach {task->
-            mExecutorService.execute { task.execute() }
+            mExecutorService.execute {
+                if(isCancelAll)return@execute
+                task.execute()
+            }
         }
 
     }
