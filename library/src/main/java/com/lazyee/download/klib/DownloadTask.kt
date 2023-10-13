@@ -214,7 +214,9 @@ class DownloadTask(val downloadUrl:String,
     internal fun cancel(){
         isCancelTask = true
         mCurrentHeadHttpURLConnection?.disconnect()
-        mCurrentHeadHttpURLConnection?.disconnect()
+        mCurrentDownloadHttpURLConnection?.disconnect()
+        mCurrentHeadHttpURLConnection = null
+        mCurrentDownloadHttpURLConnection = null
     }
 
     private fun urlEncodeChinese(url:String): String {
