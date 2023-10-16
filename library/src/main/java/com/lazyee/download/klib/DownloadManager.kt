@@ -1,6 +1,7 @@
 package com.lazyee.download.klib
 
 import android.content.Context
+import android.util.Log
 import java.io.File
 import java.security.MessageDigest
 import java.util.WeakHashMap
@@ -17,13 +18,13 @@ private const val TAG = "[DownloadManager]"
 class DownloadManager private constructor(mContext: Context,private val mDownloadThreadCoreSize:Int){
     private val mDownloadingTaskList = mutableListOf<DownloadTask>()
     private val mDownloadTaskList = mutableListOf<DownloadTask>()
+    private val mSuccessDownloadTaskList = mutableListOf<DownloadTask>()
+    private val mFailDownloadTaskList = mutableListOf<DownloadTask>()
+    private var mCallbackDownloadingTaskList = mutableListOf<DownloadTask>()
     private var mDownloadCallbackHashMap = HashMap<Any,DownloadCallback>()
     private var mExecutorService: ExecutorService
     private var mDownloadDBHelper:DownloadDBHelper
-    private val mSuccessDownloadTaskList = mutableListOf<DownloadTask>()
-    private val mFailDownloadTaskList = mutableListOf<DownloadTask>()
     private var mLastCallbackDownloadProgressTime = 0L
-    private var mCallbackDownloadingTaskList = mutableListOf<DownloadTask>()
     private var mDownloadHandler = DownloadHandler()
 
     init {
@@ -82,17 +83,20 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
             }
         }
         realDownloadUrlList.forEach { downloadUrl->
-            if(mDownloadTaskList.find { it.downloadUrl == downloadUrl } == null){
-                val task = DownloadTask(downloadUrl,getKeyByUrl(downloadUrl),savePath)
-                task.setDownloadTaskCallback(mDownloadTaskCallback)
-                mDownloadTaskList.add(task)
+            synchronized(mDownloadTaskList){
+                if(mDownloadTaskList.find { it.downloadUrl == downloadUrl } == null){
+                    val task = DownloadTask(downloadUrl,getKeyByUrl(downloadUrl),savePath)
+                    task.setDownloadTaskCallback(mDownloadTaskCallback)
+                    mDownloadTaskList.add(task)
+                }
             }
         }
+        Log.e(TAG,"mDownloadTaskList:${mDownloadTaskList.size}")
         internalDownload()
     }
 
     private fun internalDownload(){
-        synchronized(this){
+        synchronized(mDownloadTaskList){
             while (mDownloadTaskList.isNotEmpty() && mDownloadingTaskList.size < mDownloadThreadCoreSize){
                 val task = mDownloadTaskList.removeFirst()
                 mDownloadingTaskList.add(task)
@@ -116,24 +120,25 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
 
 
         override fun onDownloading(task: DownloadTask) {
-
-            if(!mCallbackDownloadingTaskList.contains(task)){
-                mCallbackDownloadingTaskList.add(task)
-            }
-
-            //回调时间最少500ms
-            val currentTimeMillis = System.currentTimeMillis()
-            if(currentTimeMillis - mLastCallbackDownloadProgressTime > 500){
-                val callbackDownloadingTaskList = mutableListOf<DownloadTask?>()
-                mCallbackDownloadingTaskList.forEach { callbackDownloadingTaskList.add(it) }
-                if(callbackDownloadingTaskList.isNotEmpty()){
-                    callbackByHandler{
-                        mDownloadCallbackHashMap.values.forEach { it.onDownloading(callbackDownloadingTaskList) }
-                    }
+            synchronized(this){
+                if(!mCallbackDownloadingTaskList.contains(task)){
+                    mCallbackDownloadingTaskList.add(task)
                 }
 
-                mCallbackDownloadingTaskList.clear()
-                mLastCallbackDownloadProgressTime = currentTimeMillis
+                //回调时间最少500ms
+                val currentTimeMillis = System.currentTimeMillis()
+                if(currentTimeMillis - mLastCallbackDownloadProgressTime > 500){
+                    val callbackDownloadingTaskList = mutableListOf<DownloadTask?>()
+                    mCallbackDownloadingTaskList.forEach { callbackDownloadingTaskList.add(it) }
+                    if(callbackDownloadingTaskList.isNotEmpty()){
+                        callbackByHandler{
+                            mDownloadCallbackHashMap.values.forEach { it.onDownloading(callbackDownloadingTaskList) }
+                        }
+                    }
+
+                    mCallbackDownloadingTaskList.clear()
+                    mLastCallbackDownloadProgressTime = currentTimeMillis
+                }
             }
         }
 
