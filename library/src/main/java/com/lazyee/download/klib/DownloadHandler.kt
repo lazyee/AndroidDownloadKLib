@@ -2,6 +2,7 @@ package com.lazyee.download.klib
 
 import android.os.Handler
 import android.os.Message
+import java.util.HashMap
 import java.util.WeakHashMap
 
 /**
@@ -12,7 +13,7 @@ import java.util.WeakHashMap
  */
 internal const val MSG_DOWNLOAD_TASK = 1
 private const val TAG = "[DownloadHandler]"
-internal class DownloadHandler(private val mDownloadCallbackHashMap:WeakHashMap<Any,DownloadCallback>) : Handler(){
+internal class DownloadHandler : Handler(){
     override fun handleMessage(msg: Message) {
         super.handleMessage(msg)
 

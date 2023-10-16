@@ -94,6 +94,7 @@ class DownloadTask(val downloadUrl:String,
             var alreadyDownloadSize = 0L
             if(tempDownloadFile.exists()){
                 alreadyDownloadSize = tempDownloadFile.length()
+                LogUtils.e(TAG,"本地存在临时下载文件,临时文件大小为:[${alreadyDownloadSize}]")
             }
 
             if(downloadTaskRecord != null && !checkConsistencyFromDB(downloadFileProperty,downloadTaskRecord)){

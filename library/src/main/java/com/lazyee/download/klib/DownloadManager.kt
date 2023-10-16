@@ -17,14 +17,14 @@ private const val TAG = "[DownloadManager]"
 class DownloadManager private constructor(mContext: Context,private val mDownloadThreadCoreSize:Int){
     private val mDownloadingTaskList = mutableListOf<DownloadTask>()
     private val mDownloadTaskList = mutableListOf<DownloadTask>()
-    private var mDownloadCallbackHashMap = WeakHashMap<Any,DownloadCallback>()
+    private var mDownloadCallbackHashMap = HashMap<Any,DownloadCallback>()
     private var mExecutorService: ExecutorService
     private var mDownloadDBHelper:DownloadDBHelper
     private val mSuccessDownloadTaskList = mutableListOf<DownloadTask>()
     private val mFailDownloadTaskList = mutableListOf<DownloadTask>()
     private var mLastCallbackDownloadProgressTime = 0L
     private var mCallbackDownloadingTaskList = mutableListOf<DownloadTask>()
-    private var mDownloadHandler = DownloadHandler(mDownloadCallbackHashMap)
+    private var mDownloadHandler = DownloadHandler()
 
     init {
         mDownloadDBHelper = DownloadDBHelper(mContext)
