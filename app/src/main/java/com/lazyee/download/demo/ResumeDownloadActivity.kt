@@ -196,8 +196,9 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
         addNewCallbackInfoToList(task.downloadUrl,"资源[${getFileNameFromUrl(task.downloadUrl)}]开始下载")
     }
 
-    override fun onDownloading(taskList: List<DownloadTask>) {
+    override fun onDownloading(taskList: List<DownloadTask?>) {
         taskList.forEach {task ->
+            task?:return@forEach
             addNewCallbackInfoToList(task.downloadUrl,"资源[${getFileNameFromUrl(task.downloadUrl)}]正在下载[${(task.downloadSize * 100f / task.contentLength).toInt()}%]")
         }
     }

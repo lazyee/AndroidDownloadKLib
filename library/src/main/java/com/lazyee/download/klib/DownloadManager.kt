@@ -124,11 +124,11 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
             //回调时间最少500ms
             val currentTimeMillis = System.currentTimeMillis()
             if(currentTimeMillis - mLastCallbackDownloadProgressTime > 500){
-                val callbackDownloadProgressInfoList = mutableListOf<DownloadTask>()
-                mCallbackDownloadingTaskList.forEach { callbackDownloadProgressInfoList.add(it) }
-                if(callbackDownloadProgressInfoList.isNotEmpty()){
+                val callbackDownloadingTaskList = mutableListOf<DownloadTask?>()
+                mCallbackDownloadingTaskList.forEach { callbackDownloadingTaskList.add(it) }
+                if(callbackDownloadingTaskList.isNotEmpty()){
                     callbackByHandler{
-                        mDownloadCallbackHashMap.values.forEach { it.onDownloading(callbackDownloadProgressInfoList) }
+                        mDownloadCallbackHashMap.values.forEach { it.onDownloading(callbackDownloadingTaskList) }
                     }
                 }
 
@@ -176,7 +176,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
 
     private fun callbackByHandler(callback:()->Unit){
         mDownloadHandler.sendMessage(mDownloadHandler.obtainDownloadMessage{
-            LogUtils.e(TAG,"thread:${Thread.currentThread().name }")
+//            LogUtils.e(TAG,"thread:${Thread.currentThread().name }")
             callback()
         })
     }
