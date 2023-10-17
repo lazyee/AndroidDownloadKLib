@@ -127,13 +127,14 @@ class DownloadTask(val downloadUrl:String,
             when(httpUrlConnection.responseCode){
                 HttpURLConnection.HTTP_PARTIAL,
                 HttpURLConnection.HTTP_OK->{
-                    val buffer = ByteArray(bufferSize)
+                    val buffer = ByteArray(bufferSize,){-1}
                     var readSize = 0
                     val randomAccessFile = RandomAccessFile(tempDownloadFilePath, "rwd")
                     randomAccessFile.seek(alreadyDownloadSize)
                     val bufferedInputStream = BufferedInputStream(httpUrlConnection.inputStream)
 
                     while (bufferedInputStream.read(buffer).also { readSize = it } != -1 && !isCancelTask) {
+                        if(isByteArrayEmpty(buffer))throw DownloadFileReadEmptyValueException(this,"读取在线资源错误")
                         randomAccessFile.write(buffer, 0, readSize)
                         alreadyDownloadSize += readSize
                         downloadSize = alreadyDownloadSize
@@ -148,6 +149,7 @@ class DownloadTask(val downloadUrl:String,
                     httpUrlConnection.disconnect()
                 }
                 HttpURLConnection.HTTP_NOT_FOUND->{
+                    httpUrlConnection.disconnect()
                     callbackDownloadFail(DownloadFileNotFoundException(this,"下载失败,状态码:${httpUrlConnection.responseCode},无法找到下载文件"))
                 }
                 else->{
@@ -160,10 +162,18 @@ class DownloadTask(val downloadUrl:String,
         } catch (e: Exception) {
             e.printStackTrace()
             if(!retry()){
-                callbackDownloadFail(DownloadException(this,"${e.message}"))
+                if(e is DownloadException){
+                    callbackDownloadFail(e)
+                }else{
+                    callbackDownloadFail(DownloadException(this,"${e.message}"))
+                }
                 retryCount = 0
             }
         }
+    }
+
+    private fun isByteArrayEmpty(byteArray: ByteArray): Boolean {
+        return byteArray.all { it.toInt() == -1 }
     }
 
     private fun callbackDownloadFail(exception :DownloadException){

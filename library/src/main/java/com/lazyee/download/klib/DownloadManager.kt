@@ -120,7 +120,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
 
 
         override fun onDownloading(task: DownloadTask) {
-            synchronized(this){
+            synchronized(mCallbackDownloadingTaskList){
                 if(!mCallbackDownloadingTaskList.contains(task)){
                     mCallbackDownloadingTaskList.add(task)
                 }
@@ -143,32 +143,35 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
         }
 
         override fun onDownloadComplete(task: DownloadTask) {
-            mCallbackDownloadingTaskList.removeAll { it.downloadUrl == task.downloadUrl }
-            mDownloadingTaskList.remove(task)
-            mSuccessDownloadTaskList.add(task)
-            mDownloadDBHelper.deleteByKey(task.key)
+            synchronized(mCallbackDownloadingTaskList){
+                mCallbackDownloadingTaskList.removeAll { it.downloadUrl == task.downloadUrl }
+                mDownloadingTaskList.remove(task)
+                mSuccessDownloadTaskList.add(task)
+                mDownloadDBHelper.deleteByKey(task.key)
 
-            callbackByHandler{
-                mDownloadCallbackHashMap.values.forEach { it.onDownloadComplete(task) }
+                callbackByHandler{
+                    mDownloadCallbackHashMap.values.forEach { it.onDownloadComplete(task) }
+                }
+                internalDownload()
+                callbackAllDownloadEnd()
             }
-            internalDownload()
-            callbackAllDownloadEnd()
-
         }
 
         override fun onDownloadFail(exception: DownloadException) {
-            val task = exception.task
-            handleDownloadException(exception)
+            synchronized(mCallbackDownloadingTaskList) {
+                val task = exception.task
+                handleDownloadException(exception)
 
-            mCallbackDownloadingTaskList.removeAll { it.downloadUrl == task.downloadUrl }
-            mDownloadingTaskList.remove(task)
-            mFailDownloadTaskList.add(task)
+                mCallbackDownloadingTaskList.removeAll { it.downloadUrl == task.downloadUrl }
+                mDownloadingTaskList.remove(task)
+                mFailDownloadTaskList.add(task)
 
-            callbackByHandler{
-                mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(exception) }
+                callbackByHandler {
+                    mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(exception) }
+                }
+                internalDownload()
+                callbackAllDownloadEnd()
             }
-            internalDownload()
-            callbackAllDownloadEnd()
         }
     }
 
