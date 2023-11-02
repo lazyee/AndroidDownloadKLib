@@ -16,7 +16,7 @@ import kotlin.system.measureTimeMillis
 /**
  * Author: leeorz
  * Email: 378229364@qq.com
- * Description:
+ * Description:下载任务
  * Date: 2023/9/21 15:05
  */
 private const val TAG = "[DownloadTask]"
@@ -70,13 +70,6 @@ class DownloadTask(val downloadUrl:String,
         }
     }
 
-    private fun downloadComplete(tempDownloadFilePath:String){
-        LogUtils.e(TAG,"文件下载完成")
-        //将临时文件改名为正式文件
-        File(tempDownloadFilePath).renameTo(File(downloadFilePath))
-        mDownloadTaskCallback?.onDownloadComplete(this)
-    }
-
     internal fun execute(){
         try{
             if(isCancelTask){
@@ -116,7 +109,9 @@ class DownloadTask(val downloadUrl:String,
             }
 
             if(alreadyDownloadSize == downloadFileProperty.contentLength){
-                downloadComplete(tempDownloadFilePath)
+                LogUtils.e(TAG,"在本地文件检测到临时文件和目标大小一致，跳过本次下载")
+                File(tempDownloadFilePath).renameTo(File(downloadFilePath))
+                mDownloadTaskCallback?.onDownloadComplete(this)
                 return
             }
 
@@ -153,8 +148,9 @@ class DownloadTask(val downloadUrl:String,
                         mDownloadTaskCallback?.onDownloading(this)
                     }
 
-                    if(!isCancelTask){
-                        downloadComplete(tempDownloadFilePath)
+                    if(alreadyDownloadSize == downloadFileProperty.contentLength){//文件已经完整下载
+                        File(tempDownloadFilePath).renameTo(File(downloadFilePath))
+                        mDownloadTaskCallback?.onDownloadComplete(this)
                     }
 
                     httpUrlConnection.inputStream.close()
@@ -195,6 +191,7 @@ class DownloadTask(val downloadUrl:String,
 
 
     private fun retry(): Boolean {
+        if(isCancelTask) return false
         if(retryCount < MAX_RETRY_COUNT){
             retryCount++
             LogUtils.e(TAG,"正在第${retryCount}次重试下载任务[${downloadUrl}]")

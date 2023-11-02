@@ -13,7 +13,7 @@ import java.util.concurrent.Executors
 /**
  * Author: leeorz
  * Email: 378229364@qq.com
- * Description:
+ * Description:下载管理类
  * Date: 2023/9/21 13:59
  */
 private const val TAG = "[DownloadManager]"
