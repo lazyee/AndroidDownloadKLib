@@ -4,7 +4,11 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
-
+    <Button
+        android:id="@+id/btnClearDownloadFile"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="清空下载文件"/>
     <Button
         android:id="@+id/btnStartDownload"
         android:layout_width="match_parent"

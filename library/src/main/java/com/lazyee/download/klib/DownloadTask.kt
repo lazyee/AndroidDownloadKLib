@@ -70,6 +70,13 @@ class DownloadTask(val downloadUrl:String,
         }
     }
 
+    private fun downloadComplete(tempDownloadFilePath:String){
+        LogUtils.e(TAG,"文件下载完成")
+        //将临时文件改名为正式文件
+        File(tempDownloadFilePath).renameTo(File(downloadFilePath))
+        mDownloadTaskCallback?.onDownloadComplete(this)
+    }
+
     internal fun execute(){
         try{
             if(isCancelTask){
@@ -108,6 +115,11 @@ class DownloadTask(val downloadUrl:String,
                 return
             }
 
+            if(alreadyDownloadSize == downloadFileProperty.contentLength){
+                downloadComplete(tempDownloadFilePath)
+                return
+            }
+
             mDownloadTaskCallback?.onDownloadStart(this)
             val httpUrlConnection = URL(urlEncodeChinese(downloadUrl)).openConnection() as HttpURLConnection
             mCurrentDownloadHttpURLConnection = httpUrlConnection
@@ -142,10 +154,7 @@ class DownloadTask(val downloadUrl:String,
                     }
 
                     if(!isCancelTask){
-                        LogUtils.e(TAG,"文件下载完成")
-                        //将临时文件改名为正式文件
-                        File(tempDownloadFilePath).renameTo(File(downloadFilePath))
-                        mDownloadTaskCallback?.onDownloadComplete(this)
+                        downloadComplete(tempDownloadFilePath)
                     }
 
                     httpUrlConnection.inputStream.close()

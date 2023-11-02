@@ -8,6 +8,7 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.recyclerview.widget.LinearLayoutManager
@@ -31,6 +32,7 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
     private val rvDownloadInfo by lazy { findViewById<RecyclerView>(R.id.rvDownloadInfo) }
     private val btnStartDownload by lazy { findViewById<Button>(R.id.btnStartDownload) }
     private val btnCancelDownload by lazy { findViewById<Button>(R.id.btnCancelDownload) }
+    private val btnClearDownloadFile by lazy { findViewById<Button>(R.id.btnClearDownloadFile) }
     private val mDownloadManager by lazy { DownloadManager.with(this,30).debug(true) }
     private val mTestDownloadUrlList = mutableListOf<String>()
     private var downloadSuccessSize = 0
@@ -47,7 +49,7 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
         mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/09/be8cc0ca0b81d4903be968a35fb7d07f/be8cc0ca0b81d4903be968a35fb7d07f.png")
         mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/09/11ca7357050998d44b9075de701bc5cb/11ca7357050998d44b9075de701bc5cb.png")
         mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/09/b57f5b425d854bdd28eb1789965fc62d/b57f5b425d854bdd28eb1789965fc62d.png")
-//
+
         mTestDownloadUrlList.add("https://malltest.gacmotor.com/uhd2/assets/logo-ac25a7fb.png")
         mTestDownloadUrlList.add("https://malltest.gacmotor.com/uhd2/assets/nec-b982b606.png")
         mTestDownloadUrlList.add("https://malltest.gacmotor.com/uhd2/assets/model-bg-a643653d.png")
@@ -64,9 +66,6 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
         mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/04/27/51ec22780d6d48525750ebd049a51f1f/51ec22780d6d48525750ebd049a51f1f.jpg")
         mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/04/27/d14e8b8c266d409bfd9bf52e9b4e74a1/d14e8b8c266d409bfd9bf52e9b4e74a1.jpg")
 
-
-
-
         mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/home-bg-9f5eb5f3.png")
         mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/nec-b982b606.png")
         mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/ec-5281d1a7.png")
@@ -74,7 +73,7 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
         mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/logo-ac25a7fb.png")
         mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/model-bg-a643653d.png")
         mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/07/19/c4cef88aaa57c9d2232c2c45aa7291f1/c4cef88aaa57c9d2232c2c45aa7291f1.png")
-//
+
         mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/08/14/59b6d08ccab9c6dd3ad98fc806ef84f6/59b6d08ccab9c6dd3ad98fc806ef84f6.png")
         mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/08/14/c4cef88aaa57c9d2232c2c45aa7291f1/c4cef88aaa57c9d2232c2c45aa7291f1.png")
         mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/08/14/9a9a3400c4af0290ca62f6cd8baf2110/9a9a3400c4af0290ca62f6cd8baf2110.png")
@@ -131,14 +130,20 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
 
         addNewCallbackInfoToList("downloadInfo","下载成功:${downloadSuccessSize};下载失败:${downloadFailSize}")
         btnStartDownload.setOnClickListener {
+            downloadSuccessSize = 0
+            downloadFailSize = 0
             val savePath = filesDir.absolutePath + File.separator + "cache"
             mDownloadManager.download(mTestDownloadUrlList,savePath)
         }
 
         btnCancelDownload.setOnClickListener{
             mDownloadManager.cancelAll()
-            downloadSuccessSize = 0
-            downloadFailSize = 0
+        }
+
+        btnClearDownloadFile.setOnClickListener {
+            val savePath = filesDir.absolutePath + File.separator + "cache"
+            File(savePath).listFiles()?.forEach { it.delete() }
+            Toast.makeText(this@ResumeDownloadActivity,"删除完成",Toast.LENGTH_SHORT).show()
         }
     }
 
@@ -182,6 +187,7 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
     }
 
     override fun onDownloadFail(exception: DownloadException) {
+        Log.e("TAG","exception:${exception.message},url:${exception.task.downloadUrl}")
         downloadFailSize++
         addNewCallbackInfoToList("downloadInfo","下载成功${downloadSuccessSize};下载失败${downloadFailSize}")
         val target = downloadInfoList.find { it.key == exception.task.downloadUrl }
