@@ -31,7 +31,7 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
     private val rvDownloadInfo by lazy { findViewById<RecyclerView>(R.id.rvDownloadInfo) }
     private val btnStartDownload by lazy { findViewById<Button>(R.id.btnStartDownload) }
     private val btnCancelDownload by lazy { findViewById<Button>(R.id.btnCancelDownload) }
-    private val mDownloadManager by lazy { DownloadManager.with(this).debug(true) }
+    private val mDownloadManager by lazy { DownloadManager.with(this,30).debug(true) }
     private val mTestDownloadUrlList = mutableListOf<String>()
     private var downloadSuccessSize = 0
     private var downloadFailSize = 0
@@ -42,48 +42,47 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
         setContentView(R.layout.activity_resume_download)
         rvDownloadInfo.adapter = downloadInfoAdapter
         mDownloadManager.addDownloadCallback(this,this)
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/2021-12-29/car_color_img/B1典雅黑-1.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/2021-12-29/car_color_img/B1%E5%85%B8%E9%9B%85%E9%BB%91-1.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/09/dd7e1636bf314b42027b0e25d215e872/dd7e1636bf314b42027b0e25d215e872.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/09/be8cc0ca0b81d4903be968a35fb7d07f/be8cc0ca0b81d4903be968a35fb7d07f.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/09/11ca7357050998d44b9075de701bc5cb/11ca7357050998d44b9075de701bc5cb.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/09/b57f5b425d854bdd28eb1789965fc62d/b57f5b425d854bdd28eb1789965fc62d.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/2021-12-29/car_color_img/B1%E5%85%B8%E9%9B%85%E9%BB%91-1.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/09/dd7e1636bf314b42027b0e25d215e872/dd7e1636bf314b42027b0e25d215e872.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/09/be8cc0ca0b81d4903be968a35fb7d07f/be8cc0ca0b81d4903be968a35fb7d07f.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/09/11ca7357050998d44b9075de701bc5cb/11ca7357050998d44b9075de701bc5cb.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/09/b57f5b425d854bdd28eb1789965fc62d/b57f5b425d854bdd28eb1789965fc62d.png")
 //
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/uhd2/assets/logo-ac25a7fb.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/uhd2/assets/nec-b982b606.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/uhd2/assets/model-bg-a643653d.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/uhd2/assets/ec-5281d1a7.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/uhd2/assets/home-bg-9f5eb5f3.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/04/c4cef88aaa57c9d2232c2c45aa7291f1/c4cef88aaa57c9d2232c2c45aa7291f1.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/18/b29ab7b56dae5a6b9cc5e1114ad6dcef/b29ab7b56dae5a6b9cc5e1114ad6dcef.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/09/a25c34aec71079ae0a867b92e95be584/a25c34aec71079ae0a867b92e95be584.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/17/7c9a8ab653328c44f01b09ecce256a5d/7c9a8ab653328c44f01b09ecce256a5d.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/17/b29ab7b56dae5a6b9cc5e1114ad6dcef/b29ab7b56dae5a6b9cc5e1114ad6dcef.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/17/b96f3563d472f83a39cc7b5f1254908b/b96f3563d472f83a39cc7b5f1254908b.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/17/f633718db2ecaa12b962e53acef07f2d/f633718db2ecaa12b962e53acef07f2d.png")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/17/655061a9be39632526a2c33977b5864f/655061a9be39632526a2c33977b5864f.png")
-//        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/04/27/51ec22780d6d48525750ebd049a51f1f/51ec22780d6d48525750ebd049a51f1f.jpg")
-//        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/04/27/d14e8b8c266d409bfd9bf52e9b4e74a1/d14e8b8c266d409bfd9bf52e9b4e74a1.jpg")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/uhd2/assets/logo-ac25a7fb.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/uhd2/assets/nec-b982b606.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/uhd2/assets/model-bg-a643653d.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/uhd2/assets/ec-5281d1a7.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/uhd2/assets/home-bg-9f5eb5f3.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/04/c4cef88aaa57c9d2232c2c45aa7291f1/c4cef88aaa57c9d2232c2c45aa7291f1.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/18/b29ab7b56dae5a6b9cc5e1114ad6dcef/b29ab7b56dae5a6b9cc5e1114ad6dcef.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/09/a25c34aec71079ae0a867b92e95be584/a25c34aec71079ae0a867b92e95be584.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/17/7c9a8ab653328c44f01b09ecce256a5d/7c9a8ab653328c44f01b09ecce256a5d.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/17/b29ab7b56dae5a6b9cc5e1114ad6dcef/b29ab7b56dae5a6b9cc5e1114ad6dcef.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/17/b96f3563d472f83a39cc7b5f1254908b/b96f3563d472f83a39cc7b5f1254908b.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/17/f633718db2ecaa12b962e53acef07f2d/f633718db2ecaa12b962e53acef07f2d.png")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/17/655061a9be39632526a2c33977b5864f/655061a9be39632526a2c33977b5864f.png")
+        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/04/27/51ec22780d6d48525750ebd049a51f1f/51ec22780d6d48525750ebd049a51f1f.jpg")
+        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/04/27/d14e8b8c266d409bfd9bf52e9b4e74a1/d14e8b8c266d409bfd9bf52e9b4e74a1.jpg")
 
 
 
 
-//        mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/home-bg-9f5eb5f3.png")
-//        mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/nec-b982b606.png")
-//        mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/ec-5281d1a7.png")
-//        mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/home-bg-19ef180c.png")
-//        mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/logo-ac25a7fb.png")
-//        mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/model-bg-a643653d.png")
-//        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/07/19/c4cef88aaa57c9d2232c2c45aa7291f1/c4cef88aaa57c9d2232c2c45aa7291f1.png")
+        mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/home-bg-9f5eb5f3.png")
+        mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/nec-b982b606.png")
+        mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/ec-5281d1a7.png")
+        mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/home-bg-19ef180c.png")
+        mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/logo-ac25a7fb.png")
+        mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/model-bg-a643653d.png")
+        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/07/19/c4cef88aaa57c9d2232c2c45aa7291f1/c4cef88aaa57c9d2232c2c45aa7291f1.png")
 //
-//        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/08/14/59b6d08ccab9c6dd3ad98fc806ef84f6/59b6d08ccab9c6dd3ad98fc806ef84f6.png")
-//        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/08/14/c4cef88aaa57c9d2232c2c45aa7291f1/c4cef88aaa57c9d2232c2c45aa7291f1.png")
-//        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/08/14/9a9a3400c4af0290ca62f6cd8baf2110/9a9a3400c4af0290ca62f6cd8baf2110.png")
-//        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/07/19/a25c34aec71079ae0a867b92e95be584/a25c34aec71079ae0a867b92e95be584.png")
-//        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/09/25/21abd8e781fae286f4992bfc7cbd5fd5/21abd8e781fae286f4992bfc7cbd5fd5.png")
-//        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/09/25/654ad09b26a271b56cdf288c7612a69f/654ad09b26a271b56cdf288c7612a69f.png")
-//        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/09/25/3295e04b86245aeeec6e0cdada9bdba8/3295e04b86245aeeec6e0cdada9bdba8.png")
-//        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/09/25/168aa2eabb3d8acb3753bb4819d3453f/168aa2eabb3d8acb3753bb4819d3453f.png")
+        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/08/14/59b6d08ccab9c6dd3ad98fc806ef84f6/59b6d08ccab9c6dd3ad98fc806ef84f6.png")
+        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/08/14/c4cef88aaa57c9d2232c2c45aa7291f1/c4cef88aaa57c9d2232c2c45aa7291f1.png")
+        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/08/14/9a9a3400c4af0290ca62f6cd8baf2110/9a9a3400c4af0290ca62f6cd8baf2110.png")
+        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/07/19/a25c34aec71079ae0a867b92e95be584/a25c34aec71079ae0a867b92e95be584.png")
+        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/09/25/21abd8e781fae286f4992bfc7cbd5fd5/21abd8e781fae286f4992bfc7cbd5fd5.png")
+        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/09/25/654ad09b26a271b56cdf288c7612a69f/654ad09b26a271b56cdf288c7612a69f.png")
+        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/09/25/3295e04b86245aeeec6e0cdada9bdba8/3295e04b86245aeeec6e0cdada9bdba8.png")
+        mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/09/25/168aa2eabb3d8acb3753bb4819d3453f/168aa2eabb3d8acb3753bb4819d3453f.png")
 
         mTestDownloadUrlList.add("https://mall.gacmotor.com/uhd2/assets/other-bg-0dc1c997.png")
         mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/09/25/7b8fc79b1c91664614f116a889daaf71/7b8fc79b1c91664614f116a889daaf71.png")
@@ -130,7 +129,6 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
         mTestDownloadUrlList.add("https://mallcdn.gacmotor.com/myfiles/common/img/2023/08/24/bf53cbeaeef79cf76fd470712cbbc9d6/bf53cbeaeef79cf76fd470712cbbc9d6.png")
 
 
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/video/2023/02/14/5f4ddb98b67b5ad8be631b9196b2db32/5f4ddb98b67b5ad8be631b9196b2db32.mp4")
         addNewCallbackInfoToList("downloadInfo","下载成功:${downloadSuccessSize};下载失败:${downloadFailSize}")
         btnStartDownload.setOnClickListener {
             val savePath = filesDir.absolutePath + File.separator + "cache"
@@ -174,7 +172,6 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
             target.info = info
         }
         downloadInfoAdapter.notifyDataSetChanged()
-        scrollToBottom()
     }
 
     private fun scrollToBottom(){

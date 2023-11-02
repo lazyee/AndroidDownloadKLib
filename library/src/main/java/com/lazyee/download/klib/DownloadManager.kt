@@ -5,6 +5,7 @@ import android.util.Log
 import java.io.File
 import java.security.MessageDigest
 import java.util.WeakHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -16,11 +17,11 @@ import java.util.concurrent.Executors
  */
 private const val TAG = "[DownloadManager]"
 class DownloadManager private constructor(mContext: Context,private val mDownloadThreadCoreSize:Int){
-    private val mDownloadingTaskList = mutableListOf<DownloadTask>()
-    private val mDownloadTaskList = mutableListOf<DownloadTask>()
-    private val mSuccessDownloadTaskList = mutableListOf<DownloadTask>()
-    private val mFailDownloadTaskList = mutableListOf<DownloadTask>()
-    private var mCallbackDownloadingTaskList = mutableListOf<DownloadTask>()
+    private val mDownloadingTaskList = CopyOnWriteArrayList<DownloadTask>()
+    private val mDownloadTaskList = CopyOnWriteArrayList<DownloadTask>()
+    private val mSuccessDownloadTaskList = CopyOnWriteArrayList<DownloadTask>()
+    private val mFailDownloadTaskList = CopyOnWriteArrayList<DownloadTask>()
+    private var mCallbackDownloadingTaskList = CopyOnWriteArrayList<DownloadTask>()
     private var mDownloadCallbackHashMap = HashMap<Any,DownloadCallback>()
     private var mExecutorService: ExecutorService
     private var mDownloadDBHelper:DownloadDBHelper
@@ -164,7 +165,9 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
 
                 mCallbackDownloadingTaskList.removeAll { it.downloadUrl == task.downloadUrl }
                 mDownloadingTaskList.remove(task)
-                mFailDownloadTaskList.add(task)
+                synchronized(mFailDownloadTaskList){
+                    mFailDownloadTaskList.add(task)
+                }
 
                 callbackByHandler {
                     mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(exception) }

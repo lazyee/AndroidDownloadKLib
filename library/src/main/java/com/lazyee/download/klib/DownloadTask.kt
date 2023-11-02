@@ -134,17 +134,20 @@ class DownloadTask(val downloadUrl:String,
                     val bufferedInputStream = BufferedInputStream(httpUrlConnection.inputStream)
 
                     while (bufferedInputStream.read(buffer).also { readSize = it } != -1 && !isCancelTask) {
-                        if(isByteArrayEmpty(buffer))throw DownloadFileReadEmptyValueException(this,"读取在线资源错误")
+                        if(isByteArrayEmpty(buffer)) throw DownloadFileReadEmptyValueException(this,"读取在线资源错误")
                         randomAccessFile.write(buffer, 0, readSize)
                         alreadyDownloadSize += readSize
                         downloadSize = alreadyDownloadSize
                         mDownloadTaskCallback?.onDownloading(this)
                     }
 
-                    LogUtils.e(TAG,"文件下载完成")
-                    //将临时文件改名为正式文件
-                    File(tempDownloadFilePath).renameTo(File(downloadFilePath))
-                    mDownloadTaskCallback?.onDownloadComplete(this)
+                    if(!isCancelTask){
+                        LogUtils.e(TAG,"文件下载完成")
+                        //将临时文件改名为正式文件
+                        File(tempDownloadFilePath).renameTo(File(downloadFilePath))
+                        mDownloadTaskCallback?.onDownloadComplete(this)
+                    }
+
                     httpUrlConnection.inputStream.close()
                     httpUrlConnection.disconnect()
                 }
