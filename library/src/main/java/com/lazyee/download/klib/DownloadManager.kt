@@ -28,6 +28,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
     private var mDownloadDBHelper:DownloadDBHelper
     private var mLastCallbackDownloadProgressTime = 0L
     private var mDownloadHandler = DownloadHandler()
+    private var isCancel = false
 
     init {
         mDownloadDBHelper = DownloadDBHelper(mContext)
@@ -59,25 +60,29 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
 
     fun getDownloadThreadCoreSize():Int = mDownloadThreadCoreSize
 
-    fun download(downloadTask: DownloadTask){
-        download(listOf(downloadTask))
+    fun start(){
+        isCancel = false
+        internalDownload()
+    }
+    fun download(downloadTask: DownloadTask):DownloadManager{
+        return download(listOf(downloadTask))
     }
 
-    fun download(downloadTaskList:List<DownloadTask>){
+    fun download(downloadTaskList:List<DownloadTask>):DownloadManager{
         downloadTaskList.forEach  {task->
             if(mDownloadTaskList.find { it.downloadUrl == task.downloadUrl } == null){
                 task.setDownloadTaskCallback(mDownloadTaskCallback)
                 mDownloadTaskList.add(task)
             }
         }
-        internalDownload()
+        return this
     }
 
-    fun download(downloadUrl:String, savePath:String){
-        download(listOf(downloadUrl),savePath)
+    fun download(downloadUrl:String, savePath:String):DownloadManager{
+        return download(listOf(downloadUrl),savePath)
     }
 
-    fun download(downloadUrlList: List<String>,savePath: String){
+    fun download(downloadUrlList: List<String>,savePath: String):DownloadManager{
         val realDownloadUrlList = mutableListOf<String>()
         downloadUrlList.forEach {
             if(!realDownloadUrlList.contains(it)){
@@ -93,10 +98,11 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
                 }
             }
         }
-        internalDownload()
+        return this
     }
 
     private fun internalDownload(){
+        if(isCancel)return
         synchronized(mDownloadTaskList){
             while (mDownloadTaskList.isNotEmpty() && mDownloadingTaskList.size < mDownloadThreadCoreSize){
                 val task = mDownloadTaskList.removeFirst()
@@ -191,6 +197,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
     }
 
     private fun callbackAllDownloadEnd(){
+        if(isCancel)return
         if(mDownloadTaskList.isNotEmpty() || mDownloadingTaskList.isNotEmpty())return
         val successDownloadUrlList = mutableListOf<String>()
         val failDownloadUrlList = mutableListOf<String>()
@@ -233,6 +240,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
      */
     fun cancelAll(){
         try{
+            isCancel = true
             mDownloadingTaskList.forEach { it.cancel() }
             mDownloadingTaskList.clear()
             mDownloadTaskList.clear()

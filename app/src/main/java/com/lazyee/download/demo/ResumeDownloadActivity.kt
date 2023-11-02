@@ -133,7 +133,7 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
             downloadSuccessSize = 0
             downloadFailSize = 0
             val savePath = filesDir.absolutePath + File.separator + "cache"
-            mDownloadManager.download(mTestDownloadUrlList,savePath)
+            mDownloadManager.download(mTestDownloadUrlList,savePath).start()
         }
 
         btnCancelDownload.setOnClickListener{
@@ -154,7 +154,6 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
 
     override fun onAllDownloadEnd(successUrlList: MutableList<String>, failUrlList: MutableList<String>) {
         Log.e("TAG","onAllDownloadEnd")
-        addNewCallbackInfoToList("downloadInfo","下载成功:${successUrlList.size};下载失败:${failUrlList.size}")
     }
 
 
