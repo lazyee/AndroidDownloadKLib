@@ -226,12 +226,16 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
      * 取消下载
      */
     fun cancelAll(){
-        mDownloadingTaskList.forEach { it.cancel() }
-        mDownloadingTaskList.clear()
-        mDownloadTaskList.clear()
-        mSuccessDownloadTaskList.clear()
-        mFailDownloadTaskList.clear()
-        mCallbackDownloadingTaskList.clear()
+        try{
+            mDownloadingTaskList.forEach { it.cancel() }
+            mDownloadingTaskList.clear()
+            mDownloadTaskList.clear()
+            mSuccessDownloadTaskList.clear()
+            mFailDownloadTaskList.clear()
+            mCallbackDownloadingTaskList.clear()
+        }catch (e:Exception){
+            e.printStackTrace()
+        }
     }
 
     /**
