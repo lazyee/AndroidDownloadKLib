@@ -93,8 +93,12 @@ class DownloadTask(val downloadUrl:String,
             val tempDownloadFile = File(tempDownloadFilePath)
             var alreadyDownloadSize = 0L
             if(tempDownloadFile.exists()){
-                alreadyDownloadSize = tempDownloadFile.length()
-                LogUtils.e(TAG,"本地存在临时下载文件,临时文件大小为:[${alreadyDownloadSize}]")
+                if(isSupportSplitDownload){
+                    alreadyDownloadSize = tempDownloadFile.length()
+                    LogUtils.e(TAG,"本地存在临时下载文件,临时文件大小为:[${alreadyDownloadSize}]")
+                }else{
+                    tempDownloadFile.delete()
+                }
             }
 
             if(downloadTaskRecord != null && !checkConsistencyFromDB(downloadFileProperty,downloadTaskRecord)){
@@ -148,7 +152,8 @@ class DownloadTask(val downloadUrl:String,
                         mDownloadTaskCallback?.onDownloading(this)
                     }
 
-                    if(alreadyDownloadSize == downloadFileProperty.contentLength){//文件已经完整下载
+                    if(alreadyDownloadSize == downloadFileProperty.contentLength
+                        || downloadFileProperty.contentLength <= 0){//文件已经完整下载
                         File(tempDownloadFilePath).renameTo(File(downloadFilePath))
                         mDownloadTaskCallback?.onDownloadComplete(this)
                     }
