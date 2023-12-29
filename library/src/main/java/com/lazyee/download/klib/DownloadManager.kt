@@ -220,10 +220,11 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
         mFailDownloadTaskList.clear()
     }
 
-    fun addDownloadCallback(key:Any,callback: DownloadCallback){
+    fun addDownloadCallback(key:Any,callback: DownloadCallback): DownloadManager {
         if(!mDownloadCallbackHashMap.containsKey(key)){
             mDownloadCallbackHashMap[key] = callback
         }
+        return this
     }
 
     fun removeDownloadCallback(key: Any){
