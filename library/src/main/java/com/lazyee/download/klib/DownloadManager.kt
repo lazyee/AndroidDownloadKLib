@@ -1,11 +1,8 @@
 package com.lazyee.download.klib
 
 import android.content.Context
-import android.util.Log
 import java.io.File
 import java.security.MessageDigest
-import java.util.Vector
-import java.util.WeakHashMap
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
@@ -113,7 +110,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
     }
 
 
-    private val mDownloadTaskCallback = object :DownloadTaskCallback{
+    private val mDownloadTaskCallback = object :InternalDownloadTaskCallback{
         override fun provideDownloadTaskHistory(task: DownloadTask):DownloadTask? {
             return mDownloadDBHelper.getDownloadTaskByKey(task.key).firstOrNull()
         }

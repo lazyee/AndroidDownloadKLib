@@ -3,16 +3,13 @@
     android:orientation="vertical"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
-
     <Button
-        android:id="@+id/btnResumeDownload"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="断点下载"/>
-
-    <Button
-        android:id="@+id/btnSingleDownloadTask"
+        android:id="@+id/btnStartDownload"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:text="单任务下载"/>
+    <TextView
+        android:id="@+id/tvStatus"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"/>
 </LinearLayout>

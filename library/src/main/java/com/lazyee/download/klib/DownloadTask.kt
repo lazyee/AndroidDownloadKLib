@@ -10,7 +10,6 @@ import java.net.URLEncoder
 import java.util.Locale
 import java.util.regex.Matcher
 import java.util.regex.Pattern
-import kotlin.system.measureTimeMillis
 
 
 /**
@@ -23,9 +22,7 @@ private const val TAG = "[DownloadTask]"
 private const val MAX_RETRY_COUNT = 3//最大重试次数
 private const val CONNECTION_TIMEOUT = 3_000
 private const val READ_TIMEOUT = 3_000
-class DownloadTask(val downloadUrl:String,
-                   val key:String,
-                   private val savePath:String) {
+class DownloadTask(val downloadUrl:String, val key:String, private val savePath:String) {
     var downloadSize = 0L
     var isSupportSplitDownload = false
     var contentLength = 0L
@@ -38,6 +35,10 @@ class DownloadTask(val downloadUrl:String,
     private var mCurrentDownloadHttpURLConnection: HttpURLConnection? = null
     private var mCurrentHeadHttpURLConnection: HttpURLConnection? = null
     private var mDownloadTaskCallback:DownloadTaskCallback? = null
+    private var mDownloadHandler :DownloadHandler? = null
+
+    constructor(downloadUrl:String,downloadFilePath:String):this(downloadUrl,File(downloadFilePath))
+    constructor(downloadUrl:String,downloadFile:File):this(downloadUrl,downloadFile.name,downloadFile.parentFile?.absolutePath?:"")
 
     init {
         var realSavePath:String = savePath
@@ -48,8 +49,14 @@ class DownloadTask(val downloadUrl:String,
         tempDownloadFilePath = realSavePath + "_" + key
     }
 
-    internal fun setDownloadTaskCallback(callback: DownloadTaskCallback){
+    internal fun setDownloadTaskCallback(callback: InternalDownloadTaskCallback){
         mDownloadTaskCallback = callback
+    }
+
+    fun justDownload(callback:DownloadTaskCallback){
+        mDownloadTaskCallback = callback
+        mDownloadHandler = DownloadHandler()
+        Thread{ execute() }.start()
     }
 
     private fun createDownloadFile(path:String,deleteIfExist:Boolean){
@@ -87,7 +94,8 @@ class DownloadTask(val downloadUrl:String,
 
             this.contentLength = downloadFileProperty.contentLength
             this.isSupportSplitDownload = downloadFileProperty.isSupportSplitDownload
-            val downloadTaskRecord = mDownloadTaskCallback?.provideDownloadTaskHistory(this)
+
+            var downloadTaskRecord:DownloadTask? = provideDownloadTaskHistory()
 
             //获取本地临时下载文件的文件大小，此大小作为目前已经下载的文件大小
             val tempDownloadFile = File(tempDownloadFilePath)
@@ -108,18 +116,18 @@ class DownloadTask(val downloadUrl:String,
 
             if(checkConsistencyFromLocalFile(downloadFileProperty) && alreadyDownloadSize == 0L){
                 LogUtils.e(TAG,"在本地文件检测到文件已经完整下载，跳过本次下载任务")
-                mDownloadTaskCallback?.onDownloadComplete(this)
+                callbackDownloadComplete()
                 return
             }
 
             if(alreadyDownloadSize == downloadFileProperty.contentLength){
                 LogUtils.e(TAG,"在本地文件检测到临时文件和目标大小一致，跳过本次下载")
                 File(tempDownloadFilePath).renameTo(File(downloadFilePath))
-                mDownloadTaskCallback?.onDownloadComplete(this)
+                callbackDownloadComplete()
                 return
             }
 
-            mDownloadTaskCallback?.onDownloadStart(this)
+            callbackDownloadStart()
             val httpUrlConnection = URL(urlEncodeChinese(downloadUrl)).openConnection() as HttpURLConnection
             mCurrentDownloadHttpURLConnection = httpUrlConnection
             httpUrlConnection.requestMethod = "GET"
@@ -149,13 +157,13 @@ class DownloadTask(val downloadUrl:String,
                         randomAccessFile.write(buffer, 0, readSize)
                         alreadyDownloadSize += readSize
                         downloadSize = alreadyDownloadSize
-                        mDownloadTaskCallback?.onDownloading(this)
+                        callbackDownloading()
                     }
 
                     if(alreadyDownloadSize == downloadFileProperty.contentLength
                         || downloadFileProperty.contentLength <= 0){//文件已经完整下载
                         File(tempDownloadFilePath).renameTo(File(downloadFilePath))
-                        mDownloadTaskCallback?.onDownloadComplete(this)
+                        callbackDownloadComplete()
                     }
 
                     httpUrlConnection.inputStream.close()
@@ -185,14 +193,82 @@ class DownloadTask(val downloadUrl:String,
         }
     }
 
-    private fun isByteArrayEmpty(byteArray: ByteArray): Boolean {
-        return byteArray.all { it.toInt() == -1 }
+
+
+    private fun provideDownloadTaskHistory(): DownloadTask? {
+        if(mDownloadTaskCallback is InternalDownloadTaskCallback){
+            return (mDownloadTaskCallback as InternalDownloadTaskCallback).provideDownloadTaskHistory(this)
+        }
+
+        return null
+    }
+
+    private fun callbackDownloadStart(){
+        mDownloadTaskCallback?:return
+        if(mDownloadTaskCallback is InternalDownloadTaskCallback){
+            mDownloadTaskCallback?.onDownloadStart(this)
+            return
+        }
+
+        mDownloadHandler?.run {
+            sendMessage(obtainDownloadMessage {
+                mDownloadTaskCallback?.onDownloadStart(this@DownloadTask)
+            })
+        }
+
+    }
+
+    private fun callbackDownloading(){
+        mDownloadTaskCallback?:return
+        if(mDownloadTaskCallback is InternalDownloadTaskCallback){
+            mDownloadTaskCallback?.onDownloading(this)
+            return
+        }
+
+        mDownloadHandler?.run {
+            sendMessage(obtainDownloadMessage {
+                mDownloadTaskCallback?.onDownloading(this@DownloadTask)
+            })
+        }
+    }
+
+    private fun callbackDownloadComplete(){
+        LogUtils.e(TAG,"下载完成")
+        mDownloadTaskCallback?:return
+        if(mDownloadTaskCallback is InternalDownloadTaskCallback){
+            mDownloadTaskCallback?.onDownloadComplete(this)
+            return
+        }
+
+        mDownloadHandler?.run {
+            sendMessage(obtainDownloadMessage {
+                mDownloadTaskCallback?.onDownloadComplete(this@DownloadTask)
+            })
+        }
     }
 
     private fun callbackDownloadFail(exception :DownloadException){
         if(isCancelTask)return
-        mDownloadTaskCallback?.onDownloadFail(exception)
+        LogUtils.e(TAG,"下载失败")
+        mDownloadTaskCallback?:return
+        if(mDownloadTaskCallback is InternalDownloadTaskCallback){
+            mDownloadTaskCallback?.onDownloadFail(exception)
+            return
+        }
+
+        mDownloadHandler?.run {
+            sendMessage(obtainDownloadMessage {
+                mDownloadTaskCallback?.onDownloadFail(exception)
+            })
+        }
     }
+
+
+    private fun isByteArrayEmpty(byteArray: ByteArray): Boolean {
+        return byteArray.all { it.toInt() == -1 }
+    }
+
+
 
 
     private fun retry(): Boolean {
