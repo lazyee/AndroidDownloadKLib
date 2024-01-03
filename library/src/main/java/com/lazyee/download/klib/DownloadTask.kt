@@ -334,7 +334,7 @@ class DownloadTask(val downloadUrl:String, val key:String, private val savePath:
     /**
      * 取消下载
      */
-    internal fun cancel(){
+    fun cancel(){
         isCancelTask = true
         mCurrentHeadHttpURLConnection?.disconnect()
         mCurrentDownloadHttpURLConnection?.disconnect()
