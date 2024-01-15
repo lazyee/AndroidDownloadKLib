@@ -171,7 +171,7 @@ class DownloadTask(val downloadUrl:String, val key:String, private val savePath:
                 }
                 HttpURLConnection.HTTP_NOT_FOUND->{
                     httpUrlConnection.disconnect()
-                    callbackDownloadFail(DownloadFileNotFoundException(this,"下载失败,状态码:${httpUrlConnection.responseCode},无法找到下载文件"))
+                    callbackDownloadFail(DownloadFileNotFoundException(this))
                 }
                 else->{
                     httpUrlConnection.disconnect()
@@ -182,6 +182,10 @@ class DownloadTask(val downloadUrl:String, val key:String, private val savePath:
             }
         } catch (e: Exception) {
             e.printStackTrace()
+            if(e is DownloadFileNotFoundException){
+                callbackDownloadFail(e)
+                return
+            }
             if(!retry()){
                 if(e is DownloadException){
                     callbackDownloadFail(e)
@@ -263,13 +267,9 @@ class DownloadTask(val downloadUrl:String, val key:String, private val savePath:
         }
     }
 
-
     private fun isByteArrayEmpty(byteArray: ByteArray): Boolean {
         return byteArray.all { it.toInt() == -1 }
     }
-
-
-
 
     private fun retry(): Boolean {
         if(isCancelTask) return false
@@ -285,33 +285,34 @@ class DownloadTask(val downloadUrl:String, val key:String, private val savePath:
 
     private fun checkDownloadUrlHead(task: DownloadTask): DownloadFileProperty? {
         var downloadFIleProperty: DownloadFileProperty? = null
-        try {
-            if(isCancelTask)return null
-            LogUtils.e(TAG,"开始检查下载文件属性,链接:${task.downloadUrl}")
-            val httpUrlConnection = URL(urlEncodeChinese(task.downloadUrl)).openConnection() as HttpURLConnection
-            mCurrentHeadHttpURLConnection = httpUrlConnection
-            httpUrlConnection.requestMethod = "HEAD"
-            httpUrlConnection.connectTimeout = CONNECTION_TIMEOUT
-            httpUrlConnection.readTimeout = READ_TIMEOUT
-            httpUrlConnection.connect()
 
-            when(httpUrlConnection.responseCode){
-                HttpURLConnection.HTTP_OK->{
-                    LogUtils.e(TAG,"[HEAD]请求获取文件信息成功,链接:${task.downloadUrl}")
-                    val contentLength:Long = httpUrlConnection.contentLength.toLong()
-                    LogUtils.e(TAG,"文件大小:[${contentLength}]")
-                    val acceptRanges = httpUrlConnection.getHeaderField("Accept-Ranges")
-                    val isSupportSplitDownload = acceptRanges != null && acceptRanges.toLowerCase(Locale.ROOT) == "bytes"
-                    LogUtils.e(TAG,"链接:${task.downloadUrl}" +  if(isSupportSplitDownload)",支持分片下载" else "不支持分片下载")
-                    downloadFIleProperty = DownloadFileProperty(contentLength,isSupportSplitDownload)
-                }
+        if(isCancelTask)return null
+        LogUtils.e(TAG,"[HEAD]开始检查下载文件属性,链接:${task.downloadUrl}")
+        val httpUrlConnection = URL(urlEncodeChinese(task.downloadUrl)).openConnection() as HttpURLConnection
+        mCurrentHeadHttpURLConnection = httpUrlConnection
+        httpUrlConnection.requestMethod = "HEAD"
+        httpUrlConnection.connectTimeout = CONNECTION_TIMEOUT
+        httpUrlConnection.readTimeout = READ_TIMEOUT
+        httpUrlConnection.connect()
+
+        when(httpUrlConnection.responseCode){
+            HttpURLConnection.HTTP_OK->{
+                LogUtils.e(TAG,"[HEAD]请求获取文件信息成功,链接:${task.downloadUrl}")
+                val contentLength:Long = httpUrlConnection.contentLength.toLong()
+                LogUtils.e(TAG,"[HEAD]文件大小:[${contentLength}]")
+                val acceptRanges = httpUrlConnection.getHeaderField("Accept-Ranges")
+                val isSupportSplitDownload = acceptRanges != null && acceptRanges.toLowerCase(Locale.ROOT) == "bytes"
+                LogUtils.e(TAG,"[HEAD]链接:${task.downloadUrl}" +  if(isSupportSplitDownload)",支持分片下载" else "不支持分片下载")
+                downloadFIleProperty = DownloadFileProperty(contentLength,isSupportSplitDownload)
             }
-
-            httpUrlConnection.disconnect()
-        }catch (e:Exception){
-            e.printStackTrace()
+            HttpURLConnection.HTTP_NOT_FOUND->{
+                LogUtils.e(TAG,"[HEAD]文件不存在,链接:${task.downloadUrl}")
+                httpUrlConnection.disconnect()
+                throw DownloadFileNotFoundException(this)
+            }
         }
 
+        httpUrlConnection.disconnect()
         return downloadFIleProperty
     }
 
