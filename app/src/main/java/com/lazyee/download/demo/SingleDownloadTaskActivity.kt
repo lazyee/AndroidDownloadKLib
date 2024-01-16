@@ -21,7 +21,7 @@ class SingleDownloadTaskActivity :AppCompatActivity(){
         setContentView(R.layout.activity_single_download_task)
         val tvStatus = findViewById<TextView>(R.id.tvStatus)
         findViewById<Button>(R.id.btnStartDownload).setOnClickListener {
-            val downloadTask = DownloadTask("https://malltest.gacmotor.com/myfiles/common/file/2023/11/15/401f2609da09c9dbffa2d6d9afab3dc1/401f2609da09c9dbffa2d6d9afab3dc2.zip",
+            val downloadTask = DownloadTask("https://malltest.gacmotor.com/myfiles/common/file/2023/11/15/401f2609da09c9dbffa2d6d9afab3dc1/401f2609da09c9dbffa2d6d9afab3dc1.zip",
                 filesDir.absolutePath + File.separator + "aaa.zip")
             downloadTask.justDownload(object :DownloadTaskCallback{
                 override fun onDownloadStart(task: DownloadTask) {
@@ -32,7 +32,7 @@ class SingleDownloadTaskActivity :AppCompatActivity(){
                     tvStatus.text = "下载中"
                 }
 
-                override fun onDownloadComplete(task: DownloadTask) {
+                override fun onDownloadComplete(downloadUrl: String) {
                     tvStatus.text = "下载成功"
                 }
 

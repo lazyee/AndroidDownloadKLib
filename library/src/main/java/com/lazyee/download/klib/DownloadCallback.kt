@@ -9,7 +9,7 @@ package com.lazyee.download.klib
 interface DownloadCallback{
     fun onDownloadStart(task: DownloadTask)
     fun onDownloading(taskList:List<DownloadTask?>)
-    fun onDownloadComplete(task: DownloadTask)
+    fun onDownloadComplete(downloadUrl: String)
     fun onDownloadFail(exception: DownloadException)
     fun onAllDownloadEnd(successUrlList:MutableList<String>,failUrlList:MutableList<String>)
 }

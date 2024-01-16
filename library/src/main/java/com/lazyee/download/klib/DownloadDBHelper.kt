@@ -13,7 +13,7 @@ import android.util.Log
  * Description:
  * Date: 2023/9/22 16:07
  */
-private const val TAG = "DownloadDBHelper"
+private const val TAG = "[DownloadDBHelper]"
 private const val T_DOWNLOAD = "t_download"
 private const val DB_NAME = "download.db"
 private const val VERSION = 1
@@ -38,7 +38,8 @@ class DownloadDBHelper(context: Context) :SQLiteOpenHelper(context,DB_NAME,null,
             '$COLUMN_SUPPORT_SPLIT_DOWNLOAD' INTEGER
             );
         """.trimIndent()
-        Log.e(TAG,"download table Sql:$downloadTableSql")
+//        Log.e(TAG,"download table Sql:$downloadTableSql")
+        LogUtils.e(TAG,"创建[$T_DOWNLOAD]表")
         db?.execSQL(downloadTableSql)
     }
 

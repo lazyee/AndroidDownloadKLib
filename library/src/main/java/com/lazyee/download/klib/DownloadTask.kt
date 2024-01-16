@@ -6,10 +6,6 @@ import java.io.File
 import java.io.RandomAccessFile
 import java.net.HttpURLConnection
 import java.net.URL
-import java.net.URLEncoder
-import java.util.Locale
-import java.util.regex.Matcher
-import java.util.regex.Pattern
 
 
 /**
@@ -19,10 +15,7 @@ import java.util.regex.Pattern
  * Date: 2023/9/21 15:05
  */
 private const val TAG = "[DownloadTask]"
-private const val MAX_RETRY_COUNT = 3//最大重试次数
-private const val CONNECTION_TIMEOUT = 3_000
-private const val READ_TIMEOUT = 3_000
-class DownloadTask(val downloadUrl:String, val key:String, private val savePath:String) {
+class DownloadTask(url:String, val key:String, private val savePath:String) :BaseTask(url){
     var downloadSize = 0L
     var isSupportSplitDownload = false
     var contentLength = 0L
@@ -31,9 +24,8 @@ class DownloadTask(val downloadUrl:String, val key:String, private val savePath:
     private val bufferSize = 32 * 1024//一次性读取32k数据
     private var retryCount = 0//重试次数
 
-    private var isCancelTask = false
     private var mCurrentDownloadHttpURLConnection: HttpURLConnection? = null
-    private var mCurrentHeadHttpURLConnection: HttpURLConnection? = null
+    private var mHeadInfoTask:HeadInfoTask? = null
     private var mDownloadTaskCallback:DownloadTaskCallback? = null
     private var mDownloadHandler :DownloadHandler? = null
 
@@ -83,11 +75,12 @@ class DownloadTask(val downloadUrl:String, val key:String, private val savePath:
                 LogUtils.e(TAG,"下载任务已经取消!!!")
                 return
             }
-            val downloadFileProperty = checkDownloadUrlHead(this)
+            mHeadInfoTask = HeadInfoTask(downloadUrl)
+            val downloadFileProperty = mHeadInfoTask?.check()
             if(downloadFileProperty == null){
                 if(!retry()){
                     LogUtils.e(TAG,"检查文件属性失败,结束下载任务:${downloadUrl}")
-                    callbackDownloadFail(DownloadException(this,"检查文件属性失败,结束下载任务:${downloadUrl}"))
+                    callbackDownloadFail(DownloadException(downloadUrl,"检查文件属性失败,结束下载任务:${downloadUrl}"))
                 }
                 return
             }
@@ -153,7 +146,7 @@ class DownloadTask(val downloadUrl:String, val key:String, private val savePath:
                     val bufferedInputStream = BufferedInputStream(httpUrlConnection.inputStream)
 
                     while (bufferedInputStream.read(buffer).also { readSize = it } != -1 && !isCancelTask) {
-                        if(isByteArrayEmpty(buffer)) throw DownloadFileReadEmptyValueException(this,"读取在线资源错误")
+                        if(isByteArrayEmpty(buffer)) throw DownloadFileReadEmptyValueException(downloadUrl,"读取在线资源错误")
                         randomAccessFile.write(buffer, 0, readSize)
                         alreadyDownloadSize += readSize
                         downloadSize = alreadyDownloadSize
@@ -171,12 +164,12 @@ class DownloadTask(val downloadUrl:String, val key:String, private val savePath:
                 }
                 HttpURLConnection.HTTP_NOT_FOUND->{
                     httpUrlConnection.disconnect()
-                    callbackDownloadFail(DownloadFileNotFoundException(this))
+                    callbackDownloadFail(DownloadFileNotFoundException(downloadUrl))
                 }
                 else->{
                     httpUrlConnection.disconnect()
                     if(!retry()){
-                        callbackDownloadFail(DownloadException(this,"下载失败,状态码:${httpUrlConnection.responseCode}"))
+                        callbackDownloadFail(DownloadException(downloadUrl,"下载失败,状态码:${httpUrlConnection.responseCode}"))
                     }
                 }
             }
@@ -190,14 +183,12 @@ class DownloadTask(val downloadUrl:String, val key:String, private val savePath:
                 if(e is DownloadException){
                     callbackDownloadFail(e)
                 }else{
-                    callbackDownloadFail(DownloadException(this,"${e.message}"))
+                    callbackDownloadFail(DownloadException(downloadUrl,"${e.message}"))
                 }
                 retryCount = 0
             }
         }
     }
-
-
 
     private fun provideDownloadTaskHistory(): DownloadTask? {
         if(mDownloadTaskCallback is InternalDownloadTaskCallback){
@@ -219,7 +210,6 @@ class DownloadTask(val downloadUrl:String, val key:String, private val savePath:
                 mDownloadTaskCallback?.onDownloadStart(this@DownloadTask)
             })
         }
-
     }
 
     private fun callbackDownloading(){
@@ -240,13 +230,13 @@ class DownloadTask(val downloadUrl:String, val key:String, private val savePath:
         LogUtils.e(TAG,"下载完成")
         mDownloadTaskCallback?:return
         if(mDownloadTaskCallback is InternalDownloadTaskCallback){
-            mDownloadTaskCallback?.onDownloadComplete(this)
+            mDownloadTaskCallback?.onDownloadComplete(downloadUrl)
             return
         }
 
         mDownloadHandler?.run {
             sendMessage(obtainDownloadMessage {
-                mDownloadTaskCallback?.onDownloadComplete(this@DownloadTask)
+                mDownloadTaskCallback?.onDownloadComplete(downloadUrl)
             })
         }
     }
@@ -267,10 +257,6 @@ class DownloadTask(val downloadUrl:String, val key:String, private val savePath:
         }
     }
 
-    private fun isByteArrayEmpty(byteArray: ByteArray): Boolean {
-        return byteArray.all { it.toInt() == -1 }
-    }
-
     private fun retry(): Boolean {
         if(isCancelTask) return false
         if(retryCount < MAX_RETRY_COUNT){
@@ -282,41 +268,6 @@ class DownloadTask(val downloadUrl:String, val key:String, private val savePath:
 
         return false
     }
-
-    private fun checkDownloadUrlHead(task: DownloadTask): DownloadFileProperty? {
-        var downloadFIleProperty: DownloadFileProperty? = null
-
-        if(isCancelTask)return null
-        LogUtils.e(TAG,"[HEAD]开始检查下载文件属性,链接:${task.downloadUrl}")
-        val httpUrlConnection = URL(urlEncodeChinese(task.downloadUrl)).openConnection() as HttpURLConnection
-        mCurrentHeadHttpURLConnection = httpUrlConnection
-        httpUrlConnection.requestMethod = "HEAD"
-        httpUrlConnection.connectTimeout = CONNECTION_TIMEOUT
-        httpUrlConnection.readTimeout = READ_TIMEOUT
-        httpUrlConnection.connect()
-
-        when(httpUrlConnection.responseCode){
-            HttpURLConnection.HTTP_OK->{
-                LogUtils.e(TAG,"[HEAD]请求获取文件信息成功,链接:${task.downloadUrl}")
-                val contentLength:Long = httpUrlConnection.contentLength.toLong()
-                LogUtils.e(TAG,"[HEAD]文件大小:[${contentLength}]")
-                val acceptRanges = httpUrlConnection.getHeaderField("Accept-Ranges")
-                val isSupportSplitDownload = acceptRanges != null && acceptRanges.toLowerCase(Locale.ROOT) == "bytes"
-                LogUtils.e(TAG,"[HEAD]链接:${task.downloadUrl}" +  if(isSupportSplitDownload)",支持分片下载" else "不支持分片下载")
-                downloadFIleProperty = DownloadFileProperty(contentLength,isSupportSplitDownload)
-            }
-            HttpURLConnection.HTTP_NOT_FOUND->{
-                LogUtils.e(TAG,"[HEAD]文件不存在,链接:${task.downloadUrl}")
-                httpUrlConnection.disconnect()
-                throw DownloadFileNotFoundException(this)
-            }
-        }
-
-        httpUrlConnection.disconnect()
-        return downloadFIleProperty
-    }
-
-
 
     /**
      * 检查文件一致性
@@ -335,29 +286,11 @@ class DownloadTask(val downloadUrl:String, val key:String, private val savePath:
     /**
      * 取消下载
      */
-    fun cancel(){
-        isCancelTask = true
-        mCurrentHeadHttpURLConnection?.disconnect()
+    override fun cancel(){
+        super.cancel()
+        mHeadInfoTask?.cancel()
+
         mCurrentDownloadHttpURLConnection?.disconnect()
-        mCurrentHeadHttpURLConnection = null
         mCurrentDownloadHttpURLConnection = null
-    }
-
-    private fun urlEncodeChinese(url:String): String {
-        var finalUrl = url
-        val pattern: Pattern = Pattern.compile("([\\u4e00-\\u9fa5]+)")
-        val matcher: Matcher = pattern.matcher(url)
-
-        if(matcher.find()){
-            val groupCount = matcher.groupCount()
-            repeat(groupCount){
-                val matchChinese = matcher.group(it + 1)
-                val urlEncodeChinese = URLEncoder.encode(matchChinese,"UTF-8")
-                finalUrl = finalUrl.replace(matchChinese,urlEncodeChinese)
-            }
-            LogUtils.e(TAG,"链接中发现中文,对中文进行URLEncode编码:$finalUrl")
-        }
-
-        return finalUrl
     }
 }

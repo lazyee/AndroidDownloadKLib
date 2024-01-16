@@ -10,7 +10,7 @@ package com.lazyee.download.klib
 interface DownloadTaskCallback{
     fun onDownloadStart(task: DownloadTask)
     fun onDownloading(task: DownloadTask)
-    fun onDownloadComplete(task: DownloadTask)
+    fun onDownloadComplete(downloadUrl:String)
     fun onDownloadFail(exception: DownloadException)
 }
 internal interface InternalDownloadTaskCallback :DownloadTaskCallback{

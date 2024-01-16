@@ -44,8 +44,8 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
         setContentView(R.layout.activity_resume_download)
         rvDownloadInfo.adapter = downloadInfoAdapter
         mDownloadManager.addDownloadCallback(this,this)
-        mTestDownloadUrlList.add("https://mall.gacmotor.com/big-screen-bff/fronted/exhibition/content/queryOfflineNewCarryAndVersionGet")
-//        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/file/2023/11/15/401f2609da09c9dbffa2d6d9afab3dc1/401f2609da09c9dbffa2d6d9afab3dc1.zip")
+//        mTestDownloadUrlList.add("https://mall.gacmotor.com/big-screen-bff/fronted/exhibition/content/queryOfflineNewCarryAndVersionGet")
+        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/file/2023/11/15/401f2609da09c9dbffa2d6d9afab3dc1/401f2609da09c9dbffa2d6d9afab3dc1.zip")
 //        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/2021-12-29/car_color_img/B1%E5%85%B8%E9%9B%85%E9%BB%91-1.png")
 //        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/09/dd7e1636bf314b42027b0e25d215e872/dd7e1636bf314b42027b0e25d215e872.png")
 //        mTestDownloadUrlList.add("https://malltest.gacmotor.com/myfiles/common/img/2023/05/09/be8cc0ca0b81d4903be968a35fb7d07f/be8cc0ca0b81d4903be968a35fb7d07f.png")
@@ -160,11 +160,11 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
 
 
     @SuppressLint("NotifyDataSetChanged")
-    override fun onDownloadComplete(task: DownloadTask) {
+    override fun onDownloadComplete(downloadUrl: String) {
         Log.e("TAG","onDownloadComplete")
         downloadSuccessSize++
         addNewCallbackInfoToList("downloadInfo","下载成功${downloadSuccessSize};下载失败${downloadFailSize}")
-        val target = downloadInfoList.find { it.key == task.downloadUrl }
+        val target = downloadInfoList.find { it.key == downloadUrl }
         downloadInfoList.remove(target)
         downloadInfoAdapter.notifyDataSetChanged()
     }
@@ -181,18 +181,11 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
         downloadInfoAdapter.notifyDataSetChanged()
     }
 
-    private fun scrollToBottom(){
-        if(isTouch || System.currentTimeMillis() - lastTouchTime < 1_000)return
-        val position = if(downloadInfoAdapter.itemCount - 1 > 0) downloadInfoAdapter.itemCount - 1 else 0
-        (rvDownloadInfo.layoutManager as LinearLayoutManager).scrollToPositionWithOffset(position,0)
-
-    }
-
     override fun onDownloadFail(exception: DownloadException) {
-        Log.e("TAG","exception:${exception.message},url:${exception.task.downloadUrl}")
+        Log.e("TAG","exception:${exception.message},url:${exception.downloadUrl}")
         downloadFailSize++
         addNewCallbackInfoToList("downloadInfo","下载成功${downloadSuccessSize};下载失败${downloadFailSize}")
-        val target = downloadInfoList.find { it.key == exception.task.downloadUrl }
+        val target = downloadInfoList.find { it.key == exception.downloadUrl }
         downloadInfoList.remove(target)
         downloadInfoAdapter.notifyDataSetChanged()
     }

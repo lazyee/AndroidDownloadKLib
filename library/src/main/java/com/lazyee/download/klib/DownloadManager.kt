@@ -17,8 +17,8 @@ private const val TAG = "[DownloadManager]"
 class DownloadManager private constructor(mContext: Context,private val mDownloadThreadCoreSize:Int){
     private val mDownloadingTaskList = CopyOnWriteArrayList<DownloadTask>()
     private val mDownloadTaskList = mutableListOf<DownloadTask>()
-    private val mSuccessDownloadTaskList = mutableListOf<DownloadTask>()
-    private val mFailDownloadTaskList = mutableListOf<DownloadTask>()
+    private val mSuccessDownloadUrlList = mutableListOf<String>()
+    private val mFailDownloadUrlList = mutableListOf<String>()
     private var mCallbackDownloadingTaskList = mutableListOf<DownloadTask>()
     private var mDownloadCallbackHashMap = HashMap<Any,DownloadCallback>()
     private var mExecutorService: ExecutorService
@@ -146,15 +146,17 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
             }
         }
 
-        override fun onDownloadComplete(task: DownloadTask) {
+        override fun onDownloadComplete(downloadUrl: String) {
             synchronized(mCallbackDownloadingTaskList){
-                mCallbackDownloadingTaskList.removeAll { it.downloadUrl == task.downloadUrl }
-                mDownloadingTaskList.remove(task)
-                mSuccessDownloadTaskList.add(task)
-                mDownloadDBHelper.deleteByKey(task.key)
+                mCallbackDownloadingTaskList.removeAll { it.downloadUrl == downloadUrl }
+                mDownloadingTaskList.removeAll { it.downloadUrl == downloadUrl }
+                if(!mSuccessDownloadUrlList.contains(downloadUrl)){
+                    mSuccessDownloadUrlList.add(downloadUrl)
+                }
+                mDownloadDBHelper.deleteByKey(getKeyByUrl(downloadUrl))
 
                 callbackByHandler{
-                    mDownloadCallbackHashMap.values.forEach { it.onDownloadComplete(task) }
+                    mDownloadCallbackHashMap.values.forEach { it.onDownloadComplete(downloadUrl) }
                 }
                 internalDownload()
                 callbackAllDownloadEnd()
@@ -163,12 +165,15 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
 
         override fun onDownloadFail(exception: DownloadException) {
             synchronized(mCallbackDownloadingTaskList) {
-                val task = exception.task
+                val downloadUrl = exception.downloadUrl
                 handleDownloadException(exception)
 
-                mCallbackDownloadingTaskList.removeAll { it.downloadUrl == task.downloadUrl }
-                mDownloadingTaskList.remove(task)
-                mFailDownloadTaskList.add(task)
+                mCallbackDownloadingTaskList.removeAll { it.downloadUrl == downloadUrl }
+                mDownloadingTaskList.removeAll { it.downloadUrl == downloadUrl }
+                if(!mFailDownloadUrlList.contains(downloadUrl)){
+                    mFailDownloadUrlList.add(downloadUrl)
+                }
+
 
                 callbackByHandler {
                     mDownloadCallbackHashMap.values.forEach { it.onDownloadFail(exception) }
@@ -180,15 +185,14 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
     }
 
     private fun handleDownloadException(exception: DownloadException){
-        val task = exception.task
+        val downloadUrl = exception.downloadUrl
         if(exception is DownloadFileNotFoundException){
-            mDownloadDBHelper.deleteByKey(task.key)
+            mDownloadDBHelper.deleteByKey(getKeyByUrl(downloadUrl))
         }
     }
 
     private fun callbackByHandler(callback:()->Unit){
         mDownloadHandler.sendMessage(mDownloadHandler.obtainDownloadMessage{
-//            LogUtils.e(TAG,"thread:${Thread.currentThread().name }")
             callback()
         })
     }
@@ -196,25 +200,12 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
     private fun callbackAllDownloadEnd(){
         if(isCancel)return
         if(mDownloadTaskList.isNotEmpty() || mDownloadingTaskList.isNotEmpty())return
-        val successDownloadUrlList = mutableListOf<String>()
-        val failDownloadUrlList = mutableListOf<String>()
-        mSuccessDownloadTaskList.forEach{
-            if(!successDownloadUrlList.contains(it.downloadUrl)){
-                successDownloadUrlList.add(it.downloadUrl)
-            }
-        }
-
-        mFailDownloadTaskList.forEach{
-            if(!failDownloadUrlList.contains(it.downloadUrl)){
-                failDownloadUrlList.add(it.downloadUrl)
-            }
-        }
 
         mDownloadHandler.sendMessage(mDownloadHandler.obtainDownloadMessage {
-            mDownloadCallbackHashMap.values.forEach { it.onAllDownloadEnd(successDownloadUrlList,failDownloadUrlList) }
+            mDownloadCallbackHashMap.values.forEach { it.onAllDownloadEnd(mSuccessDownloadUrlList,mFailDownloadUrlList) }
         })
-        mSuccessDownloadTaskList.clear()
-        mFailDownloadTaskList.clear()
+        mSuccessDownloadUrlList.clear()
+        mFailDownloadUrlList.clear()
     }
 
     fun addDownloadCallback(key:Any,callback: DownloadCallback): DownloadManager {
@@ -242,8 +233,8 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
             mDownloadingTaskList.forEach { it.cancel() }
             mDownloadingTaskList.clear()
             mDownloadTaskList.clear()
-            mSuccessDownloadTaskList.clear()
-            mFailDownloadTaskList.clear()
+            mSuccessDownloadUrlList.clear()
+            mFailDownloadUrlList.clear()
             mCallbackDownloadingTaskList.clear()
         }catch (e:Exception){
             e.printStackTrace()
