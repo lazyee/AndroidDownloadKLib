@@ -32,7 +32,7 @@ class SingleDownloadTaskActivity :AppCompatActivity(){
                     tvStatus.text = "下载中"
                 }
 
-                override fun onDownloadComplete(downloadUrl: String) {
+                override fun onDownloadComplete(task: DownloadTask) {
                     tvStatus.text = "下载成功"
                 }
 

@@ -146,17 +146,17 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
             }
         }
 
-        override fun onDownloadComplete(downloadUrl: String) {
+        override fun onDownloadComplete(task: DownloadTask) {
             synchronized(mCallbackDownloadingTaskList){
-                mCallbackDownloadingTaskList.removeAll { it.downloadUrl == downloadUrl }
-                mDownloadingTaskList.removeAll { it.downloadUrl == downloadUrl }
-                if(!mSuccessDownloadUrlList.contains(downloadUrl)){
-                    mSuccessDownloadUrlList.add(downloadUrl)
+                mCallbackDownloadingTaskList.removeAll { it.downloadUrl == task.downloadUrl }
+                mDownloadingTaskList.removeAll { it.downloadUrl == task.downloadUrl }
+                if(!mSuccessDownloadUrlList.contains(task.downloadUrl)){
+                    mSuccessDownloadUrlList.add(task.downloadUrl)
                 }
-                mDownloadDBHelper.deleteByKey(getKeyByUrl(downloadUrl))
+                mDownloadDBHelper.deleteByKey(getKeyByUrl(task.downloadUrl))
 
                 callbackByHandler{
-                    mDownloadCallbackHashMap.values.forEach { it.onDownloadComplete(downloadUrl) }
+                    mDownloadCallbackHashMap.values.forEach { it.onDownloadComplete(task) }
                 }
                 internalDownload()
                 callbackAllDownloadEnd()

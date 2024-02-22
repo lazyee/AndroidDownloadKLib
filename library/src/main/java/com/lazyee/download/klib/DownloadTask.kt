@@ -230,13 +230,13 @@ class DownloadTask(url:String, val key:String, private val savePath:String) :Bas
         LogUtils.e(TAG,"下载完成")
         mDownloadTaskCallback?:return
         if(mDownloadTaskCallback is InternalDownloadTaskCallback){
-            mDownloadTaskCallback?.onDownloadComplete(downloadUrl)
+            mDownloadTaskCallback?.onDownloadComplete(this)
             return
         }
 
         mDownloadHandler?.run {
             sendMessage(obtainDownloadMessage {
-                mDownloadTaskCallback?.onDownloadComplete(downloadUrl)
+                mDownloadTaskCallback?.onDownloadComplete(this@DownloadTask)
             })
         }
     }

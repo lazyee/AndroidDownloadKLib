@@ -160,11 +160,11 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
 
 
     @SuppressLint("NotifyDataSetChanged")
-    override fun onDownloadComplete(downloadUrl: String) {
+    override fun onDownloadComplete(task: DownloadTask) {
         Log.e("TAG","onDownloadComplete")
         downloadSuccessSize++
         addNewCallbackInfoToList("downloadInfo","下载成功${downloadSuccessSize};下载失败${downloadFailSize}")
-        val target = downloadInfoList.find { it.key == downloadUrl }
+        val target = downloadInfoList.find { it.key == task.downloadUrl }
         downloadInfoList.remove(target)
         downloadInfoAdapter.notifyDataSetChanged()
     }
