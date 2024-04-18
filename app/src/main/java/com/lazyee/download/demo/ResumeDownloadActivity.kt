@@ -164,7 +164,7 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
         Log.e("TAG","onDownloadComplete")
         downloadSuccessSize++
         addNewCallbackInfoToList("downloadInfo","下载成功${downloadSuccessSize};下载失败${downloadFailSize}")
-        val target = downloadInfoList.find { it.key == task.downloadUrl }
+        val target = downloadInfoList.find { it.key == task.downloadRequest.url }
         downloadInfoList.remove(target)
         downloadInfoAdapter.notifyDataSetChanged()
     }
@@ -191,13 +191,13 @@ class ResumeDownloadActivity :AppCompatActivity(),DownloadCallback {
     }
 
     override fun onDownloadStart(task: DownloadTask) {
-        addNewCallbackInfoToList(task.downloadUrl,"资源[${getFileNameFromUrl(task.downloadUrl)}]开始下载")
+        addNewCallbackInfoToList(task.downloadRequest.url,"资源[${getFileNameFromUrl(task.downloadRequest.url)}]开始下载")
     }
 
     override fun onDownloading(taskList: List<DownloadTask?>) {
         taskList.forEach {task ->
             task?:return@forEach
-            addNewCallbackInfoToList(task.downloadUrl,"资源[${getFileNameFromUrl(task.downloadUrl)}]正在下载[${(task.downloadSize * 100f / task.contentLength).toInt()}%]")
+            addNewCallbackInfoToList(task.downloadRequest.url,"资源[${getFileNameFromUrl(task.downloadRequest.url)}]正在下载[${(task.downloadSize * 100f / task.contentLength).toInt()}%]")
         }
     }
 

@@ -10,7 +10,7 @@ import java.util.regex.Pattern
  * Description:下载任务基类
  * Date: 2024/1/16 09:54
  */
-open class BaseTask(val downloadUrl:String) {
+open class BaseTask(val downloadRequest:DownloadRequest) {
     private val TAG = "[BaseTask]"
     internal val CONNECTION_TIMEOUT = 3_000
     internal val READ_TIMEOUT = 3_000

@@ -15,12 +15,26 @@ import java.net.URL
  * Date: 2023/9/21 15:05
  */
 private const val TAG = "[DownloadTask]"
-class DownloadTask(url:String, val key:String, private val savePath:String) :BaseTask(url){
+class DownloadTask:BaseTask{
+
+    constructor(url:String,key:String,savePath:String) :super(DownloadRequest(url)){
+        this.key = key
+        this.savePath = savePath
+        init()
+    }
+    constructor(request: DownloadRequest, key:String, savePath: String):super(request){
+        this.key = key
+        this.savePath = savePath
+        init()
+    }
+
+    var key:String
+    private var savePath:String
     var downloadSize = 0L
     var isSupportSplitDownload = false
     var contentLength = 0L
-    val downloadFilePath:String
-    private val tempDownloadFilePath:String
+    lateinit var downloadFilePath:String
+    private lateinit var tempDownloadFilePath:String
     private val bufferSize = 32 * 1024//一次性读取32k数据
     private var retryCount = 0//重试次数
 
@@ -32,7 +46,7 @@ class DownloadTask(url:String, val key:String, private val savePath:String) :Bas
     constructor(downloadUrl:String,downloadFilePath:String):this(downloadUrl,File(downloadFilePath))
     constructor(downloadUrl:String,downloadFile:File):this(downloadUrl,downloadFile.name,downloadFile.parentFile?.absolutePath?:"")
 
-    init {
+    private fun init() {
         var realSavePath:String = savePath
         if(!savePath.endsWith(File.separator)){
             realSavePath = savePath +  File.separator
@@ -69,7 +83,19 @@ class DownloadTask(url:String, val key:String, private val savePath:String) :Bas
         }
     }
 
+    private fun createHttpUrlConnection(request: DownloadRequest): HttpURLConnection {
+        val httpUrlConnection = URL(urlEncodeChinese(request.url)).openConnection() as HttpURLConnection
+        httpUrlConnection.requestMethod = request.method
+        httpUrlConnection.readTimeout = READ_TIMEOUT
+        httpUrlConnection.connectTimeout = CONNECTION_TIMEOUT
+        if(request.method == DownloadRequest.POST){
+            request.updateHttpUrlConnection(httpUrlConnection)
+        }
+        return httpUrlConnection
+    }
+
     internal fun execute(){
+        val downloadUrl = downloadRequest.url
         try{
             if(isCancelTask){
                 LogUtils.e(TAG,"下载任务已经取消!!!")
@@ -121,11 +147,14 @@ class DownloadTask(url:String, val key:String, private val savePath:String) :Bas
             }
 
             callbackDownloadStart()
-            val httpUrlConnection = URL(urlEncodeChinese(downloadUrl)).openConnection() as HttpURLConnection
+//            val httpUrlConnection = URL(urlEncodeChinese(downloadUrl)).openConnection() as HttpURLConnection
+//            httpUrlConnection.requestMethod = "GET"
+//            httpUrlConnection.readTimeout = READ_TIMEOUT
+//            httpUrlConnection.connectTimeout = CONNECTION_TIMEOUT
+
+            val httpUrlConnection = createHttpUrlConnection(downloadRequest)
             mCurrentDownloadHttpURLConnection = httpUrlConnection
-            httpUrlConnection.requestMethod = "GET"
-            httpUrlConnection.readTimeout = READ_TIMEOUT
-            httpUrlConnection.connectTimeout = CONNECTION_TIMEOUT
+
             if (isSupportSplitDownload && alreadyDownloadSize > 0){
                 createDownloadFile(tempDownloadFilePath,false)
                 httpUrlConnection.setRequestProperty("Range", "bytes=$alreadyDownloadSize-")
@@ -261,7 +290,7 @@ class DownloadTask(url:String, val key:String, private val savePath:String) :Bas
         if(isCancelTask) return false
         if(retryCount < MAX_RETRY_COUNT){
             retryCount++
-            LogUtils.e(TAG,"正在第${retryCount}次重试下载任务[${downloadUrl}]")
+            LogUtils.e(TAG,"正在第${retryCount}次重试下载任务[${downloadRequest.url}]")
             execute()
             return true
         }

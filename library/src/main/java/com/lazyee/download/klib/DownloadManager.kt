@@ -67,7 +67,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
 
     fun download(downloadTaskList:List<DownloadTask>):DownloadManager{
         downloadTaskList.forEach  {task->
-            if(mDownloadTaskList.find { it.downloadUrl == task.downloadUrl } == null){
+            if(mDownloadTaskList.find { it.downloadRequest.url == task.downloadRequest.url } == null){
                 task.setDownloadTaskCallback(mDownloadTaskCallback)
                 mDownloadTaskList.add(task)
             }
@@ -88,7 +88,7 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
         }
         realDownloadUrlList.forEach { downloadUrl->
             synchronized(mDownloadTaskList){
-                if(mDownloadTaskList.find { it.downloadUrl == downloadUrl } == null){
+                if(mDownloadTaskList.find { it.downloadRequest.url == downloadUrl } == null){
                     val task = DownloadTask(downloadUrl,getKeyByUrl(downloadUrl),savePath)
                     task.setDownloadTaskCallback(mDownloadTaskCallback)
                     mDownloadTaskList.add(task)
@@ -148,12 +148,12 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
 
         override fun onDownloadComplete(task: DownloadTask) {
             synchronized(mCallbackDownloadingTaskList){
-                mCallbackDownloadingTaskList.removeAll { it.downloadUrl == task.downloadUrl }
-                mDownloadingTaskList.removeAll { it.downloadUrl == task.downloadUrl }
-                if(!mSuccessDownloadUrlList.contains(task.downloadUrl)){
-                    mSuccessDownloadUrlList.add(task.downloadUrl)
+                mCallbackDownloadingTaskList.removeAll { it.downloadRequest.url == task.downloadRequest.url }
+                mDownloadingTaskList.removeAll { it.downloadRequest.url == task.downloadRequest.url }
+                if(!mSuccessDownloadUrlList.contains(task.downloadRequest.url)){
+                    mSuccessDownloadUrlList.add(task.downloadRequest.url)
                 }
-                mDownloadDBHelper.deleteByKey(getKeyByUrl(task.downloadUrl))
+                mDownloadDBHelper.deleteByKey(getKeyByUrl(task.downloadRequest.url))
 
                 callbackByHandler{
                     mDownloadCallbackHashMap.values.forEach { it.onDownloadComplete(task) }
@@ -168,8 +168,8 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
                 val downloadUrl = exception.downloadUrl
                 handleDownloadException(exception)
 
-                mCallbackDownloadingTaskList.removeAll { it.downloadUrl == downloadUrl }
-                mDownloadingTaskList.removeAll { it.downloadUrl == downloadUrl }
+                mCallbackDownloadingTaskList.removeAll { it.downloadRequest.url == downloadUrl }
+                mDownloadingTaskList.removeAll { it.downloadRequest.url == downloadUrl }
                 if(!mFailDownloadUrlList.contains(downloadUrl)){
                     mFailDownloadUrlList.add(downloadUrl)
                 }

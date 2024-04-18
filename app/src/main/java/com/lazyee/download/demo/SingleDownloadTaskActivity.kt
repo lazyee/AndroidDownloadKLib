@@ -29,7 +29,7 @@ class SingleDownloadTaskActivity :AppCompatActivity(){
                 }
 
                 override fun onDownloading(task: DownloadTask) {
-                    tvStatus.text = "下载中"
+                    tvStatus.text = "下载中:${task.downloadSize}/${task.contentLength}"
                 }
 
                 override fun onDownloadComplete(task: DownloadTask) {

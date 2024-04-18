@@ -95,7 +95,7 @@ class DownloadDBHelper(context: Context) :SQLiteOpenHelper(context,DB_NAME,null,
         writableDatabase.beginTransaction()
         val values = ContentValues()
         values.put(COLUMN_FILE_KEY,task.key)
-        values.put(COLUMN_DOWNLOAD_URL,task.downloadUrl)
+        values.put(COLUMN_DOWNLOAD_URL,task.downloadRequest.url)
         values.put(COLUMN_SAVE_FILE_PATH,task.downloadFilePath)
         values.put(COLUMN_DOWNLOAD_SIZE,task.downloadSize)
         values.put(COLUMN_TOTAL_SIZE,task.contentLength)

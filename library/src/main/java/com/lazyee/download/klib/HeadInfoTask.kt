@@ -11,17 +11,17 @@ import java.util.Locale
  * Date: 2024/1/16 09:52
  */
 private const val TAG = "[HeadInfoTask]"
-class HeadInfoTask(url:String):BaseTask(url) {
+class HeadInfoTask(url:String):BaseTask(DownloadRequest(url, DownloadRequest.HEAD)) {
 
     private var mHeadHttpURLConnection:HttpURLConnection? = null
     fun check():DownloadFileProperty?{
         var downloadFileProperty: DownloadFileProperty? = null
-
+        val downloadUrl = downloadRequest.url
         if(isCancelTask)return null
         LogUtils.e(TAG,"开始检查下载文件属性,链接:${downloadUrl}")
         val httpUrlConnection = URL(urlEncodeChinese(downloadUrl)).openConnection() as HttpURLConnection
         mHeadHttpURLConnection = httpUrlConnection
-        httpUrlConnection.requestMethod = "HEAD"
+        httpUrlConnection.requestMethod = downloadRequest.method
         httpUrlConnection.connectTimeout = CONNECTION_TIMEOUT
         httpUrlConnection.readTimeout = READ_TIMEOUT
         httpUrlConnection.connect()
