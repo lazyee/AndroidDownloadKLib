@@ -7,7 +7,17 @@
         android:id="@+id/btnStartDownload"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="单任务下载"/>
+        android:text="开始下载"/>
+    <Button
+        android:id="@+id/btnFileDownloaderStart"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="[FileDownloader]开始下载"/>
+    <Button
+        android:id="@+id/btnDelete"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="删除文件"/>
     <TextView
         android:id="@+id/tvStatus"
         android:layout_width="wrap_content"

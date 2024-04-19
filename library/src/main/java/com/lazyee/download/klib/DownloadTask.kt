@@ -6,6 +6,7 @@ import java.io.File
 import java.io.RandomAccessFile
 import java.net.HttpURLConnection
 import java.net.URL
+import kotlin.system.measureTimeMillis
 
 
 /**
@@ -35,8 +36,10 @@ class DownloadTask:BaseTask{
     var contentLength = 0L
     lateinit var downloadFilePath:String
     private lateinit var tempDownloadFilePath:String
-    private val bufferSize = 32 * 1024//一次性读取32k数据
+    private val bufferSize = 8 * 1024//一次性读取8k数据
     private var retryCount = 0//重试次数
+    private var cacheBufferSize = 15 * bufferSize
+
 
     private var mCurrentDownloadHttpURLConnection: HttpURLConnection? = null
     private var mHeadInfoTask:HeadInfoTask? = null
@@ -147,10 +150,6 @@ class DownloadTask:BaseTask{
             }
 
             callbackDownloadStart()
-//            val httpUrlConnection = URL(urlEncodeChinese(downloadUrl)).openConnection() as HttpURLConnection
-//            httpUrlConnection.requestMethod = "GET"
-//            httpUrlConnection.readTimeout = READ_TIMEOUT
-//            httpUrlConnection.connectTimeout = CONNECTION_TIMEOUT
 
             val httpUrlConnection = createHttpUrlConnection(downloadRequest)
             mCurrentDownloadHttpURLConnection = httpUrlConnection
@@ -170,20 +169,36 @@ class DownloadTask:BaseTask{
                 HttpURLConnection.HTTP_OK->{
                     val buffer = ByteArray(bufferSize,){-1}
                     var readSize = 0
+                    var cacheBuffer = ByteArray(cacheBufferSize + bufferSize)//设置冗余量
                     val randomAccessFile = RandomAccessFile(tempDownloadFilePath, "rwd")
                     randomAccessFile.seek(alreadyDownloadSize)
                     val bufferedInputStream = BufferedInputStream(httpUrlConnection.inputStream)
+//                    val costTime = measureTimeMillis {
+                    var cacheBufferIndex = 0
+                    while (bufferedInputStream.read(buffer).also { readSize ->
+                            if(isByteArrayEmpty(buffer)) throw DownloadFileReadEmptyValueException(downloadUrl,"读取在线资源错误")
+                            if(readSize != -1){
+                                repeat(readSize){
+                                    cacheBuffer[cacheBufferIndex] = buffer[it]
+                                    cacheBufferIndex++
+                                }
+                            }
 
-                    while (bufferedInputStream.read(buffer).also { readSize = it } != -1 && !isCancelTask) {
-                        if(isByteArrayEmpty(buffer)) throw DownloadFileReadEmptyValueException(downloadUrl,"读取在线资源错误")
-                        randomAccessFile.write(buffer, 0, readSize)
-                        alreadyDownloadSize += readSize
-                        downloadSize = alreadyDownloadSize
+                            if(cacheBufferIndex < cacheBufferSize && readSize != -1){
+                                return@also
+                            }
+                            randomAccessFile.write(cacheBuffer, 0, cacheBufferIndex)
+
+                            alreadyDownloadSize += cacheBufferIndex
+                            downloadSize = alreadyDownloadSize
+                            cacheBufferIndex = 0
+                        } != -1 && !isCancelTask) {
                         callbackDownloading()
                     }
+//                    }
+//                    LogUtils.e(TAG,"下载文件消耗的时间:$costTime")
 
-                    if(alreadyDownloadSize == downloadFileProperty.contentLength
-                        || downloadFileProperty.contentLength <= 0){//文件已经完整下载
+                    if (alreadyDownloadSize == downloadFileProperty.contentLength || downloadFileProperty.contentLength <= 0) {//文件已经完整下载
                         File(tempDownloadFilePath).renameTo(File(downloadFilePath))
                         callbackDownloadComplete()
                     }

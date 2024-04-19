@@ -18,6 +18,7 @@ open class BaseTask(val downloadRequest:DownloadRequest) {
 
     var isCancelTask = false
 
+
     open fun cancel(){
         isCancelTask = true
     }
