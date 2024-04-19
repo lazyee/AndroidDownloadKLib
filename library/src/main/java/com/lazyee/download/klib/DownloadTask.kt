@@ -117,7 +117,7 @@ class DownloadTask:BaseTask{
             this.contentLength = downloadFileProperty.contentLength
             this.isSupportSplitDownload = downloadFileProperty.isSupportSplitDownload
 
-            var downloadTaskRecord:DownloadTask? = provideDownloadTaskHistory()
+            val downloadTaskRecord:DownloadTask? = provideDownloadTaskHistory()
 
             //获取本地临时下载文件的文件大小，此大小作为目前已经下载的文件大小
             val tempDownloadFile = File(tempDownloadFilePath)
@@ -168,8 +168,7 @@ class DownloadTask:BaseTask{
                 HttpURLConnection.HTTP_PARTIAL,
                 HttpURLConnection.HTTP_OK->{
                     val buffer = ByteArray(bufferSize,){-1}
-                    var readSize = 0
-                    var cacheBuffer = ByteArray(cacheBufferSize + bufferSize)//设置冗余量
+                    val cacheBuffer = ByteArray(cacheBufferSize + bufferSize)//设置冗余量
                     val randomAccessFile = RandomAccessFile(tempDownloadFilePath, "rwd")
                     randomAccessFile.seek(alreadyDownloadSize)
                     val bufferedInputStream = BufferedInputStream(httpUrlConnection.inputStream)
