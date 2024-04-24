@@ -55,7 +55,7 @@ class DownloadTask:BaseTask{
             realSavePath = savePath +  File.separator
         }
         downloadFilePath = realSavePath + key
-        tempDownloadFilePath = realSavePath + "_" + key
+        tempDownloadFilePath = "$realSavePath.td_$key"
     }
 
     internal fun setDownloadTaskCallback(callback: InternalDownloadTaskCallback){
