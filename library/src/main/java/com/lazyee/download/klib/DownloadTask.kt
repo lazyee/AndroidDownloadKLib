@@ -2,7 +2,10 @@ package com.lazyee.download.klib
 
 import android.text.TextUtils
 import java.io.BufferedInputStream
+import java.io.BufferedOutputStream
 import java.io.File
+import java.io.FileOutputStream
+import java.io.OutputStream
 import java.io.RandomAccessFile
 import java.net.HttpURLConnection
 import java.net.URL
@@ -38,8 +41,8 @@ class DownloadTask:BaseTask{
     private lateinit var tempDownloadFilePath:String
     private val bufferSize = 8 * 1024//一次性读取8k数据
     private var retryCount = 0//重试次数
-    private var cacheBufferSize = 15 * bufferSize
-
+    private val mCallbackProgressIntervalTime = 300//回调下载进度的时间间隔
+    private var mLastCallbackProgressTime = 0L
 
     private var mCurrentDownloadHttpURLConnection: HttpURLConnection? = null
     private var mHeadInfoTask:HeadInfoTask? = null
@@ -167,35 +170,22 @@ class DownloadTask:BaseTask{
             when(httpUrlConnection.responseCode){
                 HttpURLConnection.HTTP_PARTIAL,
                 HttpURLConnection.HTTP_OK->{
-                    val buffer = ByteArray(bufferSize,){-1}
-                    val cacheBuffer = ByteArray(cacheBufferSize + bufferSize)//设置冗余量
-                    val randomAccessFile = RandomAccessFile(tempDownloadFilePath, "rwd")
-                    randomAccessFile.seek(alreadyDownloadSize)
+                    val buffer = ByteArray(bufferSize){-1}
+                    val bufferedOutputStream = BufferedOutputStream(FileOutputStream(tempDownloadFilePath,true))
                     val bufferedInputStream = BufferedInputStream(httpUrlConnection.inputStream)
-//                    val costTime = measureTimeMillis {
-                    var cacheBufferIndex = 0
-                    while (bufferedInputStream.read(buffer).also { readSize ->
-                            if(isByteArrayEmpty(buffer)) throw DownloadFileReadEmptyValueException(downloadUrl,"读取在线资源错误")
-                            if(readSize != -1){
-                                repeat(readSize){
-                                    cacheBuffer[cacheBufferIndex] = buffer[it]
-                                    cacheBufferIndex++
-                                }
-                            }
+                    val costTime = measureTimeMillis {
+                    var readSize = 0
+                    while (bufferedInputStream.read(buffer).also { readSize = it } != -1 && !isCancelTask) {
+                        if(isByteArrayEmpty(buffer)) throw DownloadFileReadEmptyValueException(downloadUrl,"读取在线资源错误")
+                        bufferedOutputStream.write(buffer, 0, readSize)
 
-                            if(cacheBufferIndex < cacheBufferSize && readSize != -1){
-                                return@also
-                            }
-                            randomAccessFile.write(cacheBuffer, 0, cacheBufferIndex)
+                        alreadyDownloadSize += readSize
+                        downloadSize = alreadyDownloadSize
 
-                            alreadyDownloadSize += cacheBufferIndex
-                            downloadSize = alreadyDownloadSize
-                            cacheBufferIndex = 0
-                        } != -1 && !isCancelTask) {
                         callbackDownloading()
                     }
-//                    }
-//                    LogUtils.e(TAG,"下载文件消耗的时间:$costTime")
+                    }
+                    LogUtils.e(TAG,"下载文件消耗的时间:$costTime")
 
                     if (alreadyDownloadSize == downloadFileProperty.contentLength || downloadFileProperty.contentLength <= 0) {//文件已经完整下载
                         File(tempDownloadFilePath).renameTo(File(downloadFilePath))
@@ -256,6 +246,11 @@ class DownloadTask:BaseTask{
     }
 
     private fun callbackDownloading(){
+        val currentTimeMillis = System.currentTimeMillis()
+        if(currentTimeMillis - mLastCallbackProgressTime < mCallbackProgressIntervalTime){
+            return
+        }
+        mLastCallbackProgressTime = currentTimeMillis
         mDownloadTaskCallback?:return
         if(mDownloadTaskCallback is InternalDownloadTaskCallback){
             mDownloadTaskCallback?.onDownloading(this)
