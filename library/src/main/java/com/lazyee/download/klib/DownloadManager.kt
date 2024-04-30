@@ -242,6 +242,19 @@ class DownloadManager private constructor(mContext: Context,private val mDownloa
     }
 
     /**
+     * 取消某个任务
+    */
+    fun cancel(url:String){
+        val task = mDownloadTaskList.find { it.downloadRequest.url == url }
+        task?.run {
+            task.cancel()
+            mDownloadTaskList.remove(task)
+            mFailDownloadUrlList.remove(url)
+            mSuccessDownloadUrlList.remove(url)
+        }
+    }
+
+    /**
      * 从数据库中获取所有下载任务
      */
     fun getAllDownloadTaskFromDB(): MutableList<DownloadTask> {
