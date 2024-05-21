@@ -173,7 +173,6 @@ class DownloadTask:BaseTask{
                     val buffer = ByteArray(bufferSize){-1}
                     val bufferedOutputStream = BufferedOutputStream(FileOutputStream(tempDownloadFilePath,true))
                     val bufferedInputStream = BufferedInputStream(httpUrlConnection.inputStream)
-//                    val costTime = measureTimeMillis {
                     var readSize = 0
                     while (bufferedInputStream.read(buffer).also { readSize = it } != -1 && !isCancelTask) {
                         if(isByteArrayEmpty(buffer)) throw DownloadFileReadEmptyValueException(downloadUrl,"读取在线资源错误")
@@ -184,10 +183,10 @@ class DownloadTask:BaseTask{
 
                         callbackDownloading()
                     }
-//                    }
-//                    LogUtils.e(TAG,"下载文件消耗的时间:$costTime")
+                    bufferedOutputStream.close()
 
                     if (alreadyDownloadSize == downloadFileProperty.contentLength || downloadFileProperty.contentLength <= 0) {//文件已经完整下载
+
                         File(tempDownloadFilePath).renameTo(File(downloadFilePath))
                         callbackDownloadComplete()
                     }

@@ -23,9 +23,11 @@ import java.lang.ref.WeakReference
  */
 class SingleDownloadTaskActivity :AppCompatActivity(){
 //    private val downloadUrl = "https://mallcdn.gacmotor.com/myfiles/common/img/2023/09/25/168aa2eabb3d8acb3753bb4819d3453f/168aa2eabb3d8acb3753bb4819d3453f.png"
-    private val downloadUrl = "https://malltest.gacmotor.com/myfiles/common/file/2023/11/15/401f2609da09c9dbffa2d6d9afab3dc1/401f2609da09c9dbffa2d6d9afab3dc1.zip"
-//    private val downloadFileName = "aaa.png"
-    private val downloadFileName = "aaa.zip"
+//    private val downloadUrl = "https://malltest.gacmotor.com/myfiles/common/file/2023/11/15/401f2609da09c9dbffa2d6d9afab3dc1/401f2609da09c9dbffa2d6d9afab3dc1.zip"
+    private val downloadUrl = "https://nextcdn-mall.gacmotor.com/myfiles/common/img/2024/02/01/03db25bac325bb31e6222587cf90f635/03db25bac325bb31e6222587cf90f635.png"
+//    private val downloadUrl = "https://nextcdn-mall.gacmotor.com/myfiles/common/img/2024/02/01/e3e875999f96eba4f34644015d4e660c/e3e875999f96eba4f34644015d4e660c.png"
+    private val downloadFileName = "aaa.png"
+//    private val downloadFileName = "aaa.zip"
     private val downloadFilePath by lazy { filesDir.absolutePath + File.separator + downloadFileName }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
