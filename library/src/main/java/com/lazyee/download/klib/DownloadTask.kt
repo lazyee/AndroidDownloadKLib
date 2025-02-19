@@ -171,7 +171,8 @@ class DownloadTask:BaseTask{
                 HttpURLConnection.HTTP_PARTIAL,
                 HttpURLConnection.HTTP_OK->{
                     val buffer = ByteArray(bufferSize){-1}
-                    val bufferedOutputStream = BufferedOutputStream(FileOutputStream(tempDownloadFilePath,true))
+                    val isAppend = httpUrlConnection.responseCode == HttpURLConnection.HTTP_PARTIAL//如果是分片下载模式，那么就启动追加模式，否则就覆盖
+                    val bufferedOutputStream = BufferedOutputStream(FileOutputStream(tempDownloadFilePath,isAppend))
                     val bufferedInputStream = BufferedInputStream(httpUrlConnection.inputStream)
                     var readSize = 0
                     while (bufferedInputStream.read(buffer).also { readSize = it } != -1 && !isCancelTask) {
