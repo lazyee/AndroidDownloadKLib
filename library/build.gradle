@@ -2,7 +2,7 @@ plugins {
     id 'com.android.library'
     id 'kotlin-android'
 }
-apply from: "../config.gradle"
+apply from: "../config_min_sdk_23.gradle"
 android {
 
     compileSdk versions.compile_sdk
